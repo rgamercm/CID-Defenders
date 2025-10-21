@@ -13,11 +13,26 @@ const GAME_STATES = {
     VICTORY: 'victory'
 };
 
-// Personajes defensores (reemplazan los pilares CID)
+// Personajes defensores en forma de triángulo equilátero
 const DEFENSORES = {
-    CONFIDENCIALIDAD: { nombre: "Confidencialidad", salud: 100, color: '#3498db', posicion: { x: 100, y: 250 } },
-    INTEGRIDAD: { nombre: "Integridad", salud: 100, color: '#2ecc71', posicion: { x: 400, y: 250 } },
-    DISPONIBILIDAD: { nombre: "Disponibilidad", salud: 100, color: '#e74c3c', posicion: { x: 700, y: 250 } }
+    CONFIDENCIALIDAD: { 
+        nombre: "Confidencialidad", 
+        salud: 100, 
+        color: '#3498db', 
+        posicion: { x: 400, y: 150 }  // Vértice superior
+    },
+    INTEGRIDAD: { 
+        nombre: "Integridad", 
+        salud: 100, 
+        color: '#2ecc71', 
+        posicion: { x: 250, y: 350 }  // Vértice inferior izquierdo
+    },
+    DISPONIBILIDAD: { 
+        nombre: "Disponibilidad", 
+        salud: 100, 
+        color: '#e74c3c', 
+        posicion: { x: 550, y: 350 }  // Vértice inferior derecho
+    }
 };
 
 class CIDDefenderGame {
@@ -181,6 +196,125 @@ class CIDDefenderGame {
         };
     }
 
+    createQuestionManager() {
+        return {
+            getRandomQuestion: () => {
+                const questions = [
+                    {
+                        question: "¿Qué garantiza que la información se mantenga secreta o privada, restringiendo el acceso?",
+                        options: ["Integridad", "Confidencialidad", "Disponibilidad", "Balanceo"],
+                        correct: 1,
+                        explanation: "La Confidencialidad protege la información del acceso no autorizado."
+                    },
+                    {
+                        question: "¿Qué pilar garantiza que los datos sean auténticos, precisos y confiables a lo largo de su ciclo de vida?",
+                        options: ["Confidencialidad", "Integridad", "Disponibilidad", "Privacidad"],
+                        correct: 1,
+                        explanation: "La Integridad asegura que los datos no sean alterados indebidamente."
+                    },
+                    {
+                        question: "¿Qué pilar garantiza que los sistemas y los datos sean accesibles para los usuarios cuando se necesiten?",
+                        options: ["Integridad", "Confidencialidad", "Disponibilidad", "Precisión"],
+                        correct: 2,
+                        explanation: "La Disponibilidad asegura el acceso continuo a sistemas y datos."
+                    }
+                ];
+                return questions[Math.floor(Math.random() * questions.length)];
+            },
+            getQuestionForDefensor: (defensorName) => {
+                // Mapear nombres de defensores a categorías de preguntas
+                const categoryMap = {
+                    "Confidencialidad": "Confidencialidad",
+                    "Integridad": "Integridad", 
+                    "Disponibilidad": "Disponibilidad"
+                };
+                
+                const category = categoryMap[defensorName] || "General";
+                
+                // Preguntas específicas por categoría
+                const questionBank = {
+                    "Confidencialidad": [
+                        {
+                            question: "¿Qué garantiza que la información se mantenga secreta o privada, restringiendo el acceso?",
+                            options: ["Integridad", "Confidencialidad", "Disponibilidad", "Balanceo"],
+                            correct: 1,
+                            explanation: "La Confidencialidad protege la información del acceso no autorizado."
+                        },
+                        {
+                            question: "¿Qué técnica hace ilegible la información para personas no autorizadas?",
+                            options: ["Hashing", "Failover", "Cifrado", "Logs"],
+                            correct: 2,
+                            explanation: "El cifrado transforma la información en formato ilegible sin la clave adecuada."
+                        },
+                        {
+                            question: "¿Qué sistema verifica la identidad con más de un factor para acceso seguro?",
+                            options: ["RAID", "DRP", "MFA", "DNS"],
+                            correct: 2,
+                            explanation: "MFA (Multi-Factor Authentication) usa múltiples métodos de verificación."
+                        }
+                    ],
+                    "Integridad": [
+                        {
+                            question: "¿Qué pilar garantiza que los datos sean auténticos, precisos y confiables?",
+                            options: ["Confidencialidad", "Integridad", "Disponibilidad", "Privacidad"],
+                            correct: 1,
+                            explanation: "La Integridad asegura que los datos no sean alterados indebidamente."
+                        },
+                        {
+                            question: "¿Qué técnica verifica que los datos no han sido modificados?",
+                            options: ["Cifrado", "Hash", "VPN", "SNMP"],
+                            correct: 1,
+                            explanation: "Las funciones hash generan valores únicos que cambian si los datos se modifican."
+                        },
+                        {
+                            question: "¿Qué concepto previene que se pueda negar el envío de información?",
+                            options: ["Confidencialidad", "Disponibilidad", "Redundancia", "No repudio"],
+                            correct: 3,
+                            explanation: "El no repudio garantiza que no se pueda negar la autoría de una acción."
+                        }
+                    ],
+                    "Disponibilidad": [
+                        {
+                            question: "¿Qué pilar garantiza el acceso a sistemas cuando se necesiten?",
+                            options: ["Integridad", "Confidencialidad", "Disponibilidad", "Precisión"],
+                            correct: 2,
+                            explanation: "La Disponibilidad asegura el acceso continuo a sistemas y datos."
+                        },
+                        {
+                            question: "¿Qué ataque compromete la Disponibilidad al saturar servicios?",
+                            options: ["Phishing", "Ataque DDoS", "Spoofing", "Cifrado"],
+                            correct: 1,
+                            explanation: "Los ataques DDoS sobrecargan servicios haciendo que no estén disponibles."
+                        },
+                        {
+                            question: "¿Qué técnica ayuda cuando el sistema primario falla?",
+                            options: ["Estáticas", "Redundantes", "Cifradas", "Auténticas"],
+                            correct: 1,
+                            explanation: "La redundancia proporciona componentes de respaldo para mantener servicios."
+                        }
+                    ],
+                    "General": [
+                        {
+                            question: "¿Qué principio de seguridad protege contra modificaciones no autorizadas?",
+                            options: ["Confidencialidad", "Integridad", "Disponibilidad", "Autenticación"],
+                            correct: 1,
+                            explanation: "La Integridad protege contra modificaciones no autorizadas."
+                        },
+                        {
+                            question: "¿Qué herramienta filtra el tráfico de red basándose en reglas?",
+                            options: ["Antivirus", "Firewall", "IDS", "VPN"],
+                            correct: 1,
+                            explanation: "El firewall actúa como barrera entre redes, filtrando tráfico."
+                        }
+                    ]
+                };
+                
+                const availableQuestions = questionBank[category] || questionBank["General"];
+                return availableQuestions[Math.floor(Math.random() * availableQuestions.length)];
+            }
+        };
+    }
+
     showScreenMessage(text, type = 'info') {
         const message = {
             text: text,
@@ -302,125 +436,6 @@ class CIDDefenderGame {
         if (wrongElement) wrongElement.textContent = this.stats.wrongAnswers;
         if (accuracyElement) accuracyElement.textContent = `${this.stats.accuracy}%`;
     }
-
-createQuestionManager() {
-    return {
-        getRandomQuestion: () => {
-            const questions = [
-                {
-                    question: "¿Qué garantiza que la información se mantenga secreta o privada, restringiendo el acceso?",
-                    options: ["Integridad", "Confidencialidad", "Disponibilidad", "Balanceo"],
-                    correct: 1,
-                    explanation: "La Confidencialidad protege la información del acceso no autorizado."
-                },
-                {
-                    question: "¿Qué pilar garantiza que los datos sean auténticos, precisos y confiables a lo largo de su ciclo de vida?",
-                    options: ["Confidencialidad", "Integridad", "Disponibilidad", "Privacidad"],
-                    correct: 1,
-                    explanation: "La Integridad asegura que los datos no sean alterados indebidamente."
-                },
-                {
-                    question: "¿Qué pilar garantiza que los sistemas y los datos sean accesibles para los usuarios cuando se necesiten?",
-                    options: ["Integridad", "Confidencialidad", "Disponibilidad", "Precisión"],
-                    correct: 2,
-                    explanation: "La Disponibilidad asegura el acceso continuo a sistemas y datos."
-                }
-            ];
-            return questions[Math.floor(Math.random() * questions.length)];
-        },
-        getQuestionForDefensor: (defensorName) => {
-            // Mapear nombres de defensores a categorías de preguntas
-            const categoryMap = {
-                "Confidencialidad": "Confidencialidad",
-                "Integridad": "Integridad", 
-                "Disponibilidad": "Disponibilidad"
-            };
-            
-            const category = categoryMap[defensorName] || "General";
-            
-            // Preguntas específicas por categoría
-            const questionBank = {
-                "Confidencialidad": [
-                    {
-                        question: "¿Qué garantiza que la información se mantenga secreta o privada, restringiendo el acceso?",
-                        options: ["Integridad", "Confidencialidad", "Disponibilidad", "Balanceo"],
-                        correct: 1,
-                        explanation: "La Confidencialidad protege la información del acceso no autorizado."
-                    },
-                    {
-                        question: "¿Qué técnica hace ilegible la información para personas no autorizadas?",
-                        options: ["Hashing", "Failover", "Cifrado", "Logs"],
-                        correct: 2,
-                        explanation: "El cifrado transforma la información en formato ilegible sin la clave adecuada."
-                    },
-                    {
-                        question: "¿Qué sistema verifica la identidad con más de un factor para acceso seguro?",
-                        options: ["RAID", "DRP", "MFA", "DNS"],
-                        correct: 2,
-                        explanation: "MFA (Multi-Factor Authentication) usa múltiples métodos de verificación."
-                    }
-                ],
-                "Integridad": [
-                    {
-                        question: "¿Qué pilar garantiza que los datos sean auténticos, precisos y confiables?",
-                        options: ["Confidencialidad", "Integridad", "Disponibilidad", "Privacidad"],
-                        correct: 1,
-                        explanation: "La Integridad asegura que los datos no sean alterados indebidamente."
-                    },
-                    {
-                        question: "¿Qué técnica verifica que los datos no han sido modificados?",
-                        options: ["Cifrado", "Hash", "VPN", "SNMP"],
-                        correct: 1,
-                        explanation: "Las funciones hash generan valores únicos que cambian si los datos se modifican."
-                    },
-                    {
-                        question: "¿Qué concepto previene que se pueda negar el envío de información?",
-                        options: ["Confidencialidad", "Disponibilidad", "Redundancia", "No repudio"],
-                        correct: 3,
-                        explanation: "El no repudio garantiza que no se pueda negar la autoría de una acción."
-                    }
-                ],
-                "Disponibilidad": [
-                    {
-                        question: "¿Qué pilar garantiza el acceso a sistemas cuando se necesiten?",
-                        options: ["Integridad", "Confidencialidad", "Disponibilidad", "Precisión"],
-                        correct: 2,
-                        explanation: "La Disponibilidad asegura el acceso continuo a sistemas y datos."
-                    },
-                    {
-                        question: "¿Qué ataque compromete la Disponibilidad al saturar servicios?",
-                        options: ["Phishing", "Ataque DDoS", "Spoofing", "Cifrado"],
-                        correct: 1,
-                        explanation: "Los ataques DDoS sobrecargan servicios haciendo que no estén disponibles."
-                    },
-                    {
-                        question: "¿Qué técnica ayuda cuando el sistema primario falla?",
-                        options: ["Estáticas", "Redundantes", "Cifradas", "Auténticas"],
-                        correct: 1,
-                        explanation: "La redundancia proporciona componentes de respaldo para mantener servicios."
-                    }
-                ],
-                "General": [
-                    {
-                        question: "¿Qué principio de seguridad protege contra modificaciones no autorizadas?",
-                        options: ["Confidencialidad", "Integridad", "Disponibilidad", "Autenticación"],
-                        correct: 1,
-                        explanation: "La Integridad protege contra modificaciones no autorizadas."
-                    },
-                    {
-                        question: "¿Qué herramienta filtra el tráfico de red basándose en reglas?",
-                        options: ["Antivirus", "Firewall", "IDS", "VPN"],
-                        correct: 1,
-                        explanation: "El firewall actúa como barrera entre redes, filtrando tráfico."
-                    }
-                ]
-            };
-            
-            const availableQuestions = questionBank[category] || questionBank["General"];
-            return availableQuestions[Math.floor(Math.random() * availableQuestions.length)];
-        }
-    };
-}
 
     getEnemyColor(tipo) {
         const colors = {
@@ -670,7 +685,7 @@ createQuestionManager() {
                     enemy.y += (dy / distance) * enemy.speed * deltaTime;
                 }
                 
-                // Verificar si llegó al objetivo para atacar - BUG CORREGIDO AQUÍ
+                // Verificar si llegó al objetivo para atacar
                 if (distance < 40) {
                     this.triggerAtaque(enemy, enemy.targetDefensor);
                     return false; // Eliminar enemigo después del ataque
@@ -834,52 +849,52 @@ createQuestionManager() {
         this.enemies.push(...newEnemies);
     }
 
-showQuestionScreen() {
-    if (!this.ataqueActual) {
-        console.error('❌ No hay ataque actual para mostrar pregunta');
-        this.setGameState(GAME_STATES.PLAYING);
-        return;
-    }
-    
-    try {
-        // USAR LA NUEVA FUNCIÓN PARA PREGUNTAS ESPECÍFICAS
-        if (this.ataqueActual && this.ataqueActual.defensor) {
-            console.log(`🎯 Mostrando pregunta específica para: ${this.ataqueActual.defensor.nombre}`);
-            this.currentQuestion = this.questionManager.getQuestionForDefensor(this.ataqueActual.defensor.nombre);
-        } else {
-            console.log('ℹ️  Usando pregunta general');
-            this.currentQuestion = this.questionManager.getRandomQuestion();
+    showQuestionScreen() {
+        if (!this.ataqueActual) {
+            console.error('❌ No hay ataque actual para mostrar pregunta');
+            this.setGameState(GAME_STATES.PLAYING);
+            return;
         }
         
-        this.questionTimer = 0;
-        
-        if (!this.currentQuestion) {
-            console.error('❌ No se pudo obtener pregunta, usando fallback');
-            this.currentQuestion = this.questionManager.getRandomQuestion();
+        try {
+            // USAR LA NUEVA FUNCIÓN PARA PREGUNTAS ESPECÍFICAS
+            if (this.ataqueActual && this.ataqueActual.defensor) {
+                console.log(`🎯 Mostrando pregunta específica para: ${this.ataqueActual.defensor.nombre}`);
+                this.currentQuestion = this.questionManager.getQuestionForDefensor(this.ataqueActual.defensor.nombre);
+            } else {
+                console.log('ℹ️  Usando pregunta general');
+                this.currentQuestion = this.questionManager.getRandomQuestion();
+            }
+            
+            this.questionTimer = 0;
+            
+            if (!this.currentQuestion) {
+                console.error('❌ No se pudo obtener pregunta, usando fallback');
+                this.currentQuestion = this.questionManager.getRandomQuestion();
+            }
+            
+            document.getElementById('questionText').textContent = this.currentQuestion.question;
+            
+            const optionsContainer = document.getElementById('optionsContainer');
+            optionsContainer.innerHTML = '';
+            
+            this.currentQuestion.options.forEach((option, index) => {
+                const optionElement = document.createElement('div');
+                optionElement.className = 'option';
+                optionElement.textContent = option;
+                optionElement.addEventListener('click', () => this.onAnswerSelected(index));
+                optionsContainer.appendChild(optionElement);
+            });
+            
+            this.showScreen('questionScreen');
+            
+        } catch (error) {
+            console.error('❌ Error al mostrar pregunta:', error);
+            // Fallback: volver al juego sin pregunta
+            this.ataqueActual = null;
+            this.setGameState(GAME_STATES.PLAYING);
         }
-        
-        document.getElementById('questionText').textContent = this.currentQuestion.question;
-        
-        const optionsContainer = document.getElementById('optionsContainer');
-        optionsContainer.innerHTML = '';
-        
-        this.currentQuestion.options.forEach((option, index) => {
-            const optionElement = document.createElement('div');
-            optionElement.className = 'option';
-            optionElement.textContent = option;
-            optionElement.addEventListener('click', () => this.onAnswerSelected(index));
-            optionsContainer.appendChild(optionElement);
-        });
-        
-        this.showScreen('questionScreen');
-        
-    } catch (error) {
-        console.error('❌ Error al mostrar pregunta:', error);
-        // Fallback: volver al juego sin pregunta
-        this.ataqueActual = null;
-        this.setGameState(GAME_STATES.PLAYING);
     }
-}
 
     onAnswerSelected(selectedIndex) {
         if (!this.currentQuestion) {
