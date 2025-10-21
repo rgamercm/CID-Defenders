@@ -2,6 +2,7 @@
  * SISTEMA DE ENEMIGOS RENOVADO - CID DEFENDER
  * Enemigos que atacan defensores y activan preguntas
  * MEJORA: Distribución balanceada de ataques entre defensores
+ * MEJORA: Enemigos se detienen completamente durante preguntas
  */
 
 class EnemyManager {
@@ -326,9 +327,20 @@ class Enemy {
         
         // NUEVO: Forzar objetivo asignado
         this.forceAssignedTarget = true;
+        
+        // MEJORA: Estado para controlar si está en ataque
+        this.isInAttackMode = false;
     }
 
-    update(deltaTime, defensores) {
+    // MEJORA IMPORTANTE: Enemigos se detienen durante preguntas
+    update(deltaTime, defensores, gameState) {
+        // MEJORA: Si el juego está en estado QUESTION, no hacer nada
+        if (gameState === 'question') {
+            // Congelar completamente al enemigo durante preguntas
+            this.updateEffects(deltaTime); // Solo actualizar efectos visuales
+            return;
+        }
+        
         // NUEVO: Siempre usar el defensor asignado si está disponible
         if (this.assignedDefensor && !this.targetDefensor) {
             this.targetDefensor = defensores[this.assignedDefensor];
@@ -342,8 +354,8 @@ class Enemy {
         // Aplicar efectos temporales
         this.updateEffects(deltaTime);
         
-        // Movimiento hacia el objetivo
-        if (this.targetDefensor && this.targetDefensor.salud > 0) {
+        // Movimiento hacia el objetivo - SOLO si no estamos en ataque
+        if (!this.isInAttackMode && this.targetDefensor && this.targetDefensor.salud > 0) {
             this.moveTowardsTarget(deltaTime);
         }
         
@@ -414,7 +426,15 @@ class Enemy {
 
     prepareAttack() {
         this.isAttacking = true;
+        this.isInAttackMode = true; // MEJORA: Marcar que está en modo ataque
         console.log(`⚔️ ${this.name} (desde ${this.spawnSide}) ataca a ${this.targetDefensor.nombre}`);
+    }
+
+    // MEJORA: Resetear estado de ataque cuando se completa
+    resetAttackState() {
+        this.isAttacking = false;
+        this.isInAttackMode = false;
+        this.attackCooldown = 1.0; // Cooldown después del ataque
     }
 
     updateEffects(deltaTime) {
@@ -586,7 +606,9 @@ class Enemy {
             description: this.description,
             score: this.score,
             assignedDefensor: this.assignedDefensor,
-            spawnSide: this.spawnSide
+            spawnSide: this.spawnSide,
+            isAttacking: this.isAttacking,
+            isInAttackMode: this.isInAttackMode
         };
     }
 }

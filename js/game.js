@@ -1,6 +1,7 @@
 /**
  * CID DEFENDER - VERSIÓN RENOVADA
  * Nueva mecánica: Enemigos atacan personajes, preguntas como defensa
+ * MEJORA: Juego se pausa completamente durante preguntas
  */
 
 const GAME_STATES = {
@@ -8,7 +9,7 @@ const GAME_STATES = {
     MENU: 'menu', 
     PLAYING: 'playing',
     PAUSED: 'paused',
-    QUESTION: 'question',
+    QUESTION: 'question', // Estado para cuando se muestra pregunta
     GAME_OVER: 'game_over',
     VICTORY: 'victory'
 };
@@ -723,15 +724,40 @@ class CIDDefenderGame {
         }
     }
 
+    // MEJORA IMPORTANTE: El juego se pausa completamente durante preguntas
     update(deltaTime) {
-        this.updateTimers(deltaTime);
-        this.updateEnemies(deltaTime);
-        this.updateTowers(deltaTime);
-        this.updateProjectiles(deltaTime);
-        this.updateParticles(deltaTime);
-        this.updateScreenMessages(deltaTime);
-        this.checkGameConditions();
-        this.updateUI();
+        // Si estamos en estado QUESTION, solo actualizar mensajes y timer de pregunta
+        if (this.currentState === GAME_STATES.QUESTION) {
+            this.updateQuestionTimer(deltaTime);
+            this.updateScreenMessages(deltaTime);
+            return; // ⬅️ IMPORTANTE: No actualizar el resto del juego
+        }
+        
+        // Solo actualizar el juego si estamos en estado PLAYING
+        if (this.currentState === GAME_STATES.PLAYING) {
+            this.updateTimers(deltaTime);
+            this.updateEnemies(deltaTime);
+            this.updateTowers(deltaTime);
+            this.updateProjectiles(deltaTime);
+            this.updateParticles(deltaTime);
+            this.updateScreenMessages(deltaTime);
+            this.checkGameConditions();
+            this.updateUI();
+        }
+    }
+
+    // NUEVA FUNCIÓN: Actualizar solo el timer de pregunta
+    updateQuestionTimer(deltaTime) {
+        this.questionTimer += deltaTime;
+        const timerBar = document.querySelector('.timer-bar');
+        if (timerBar) {
+            const timeLeft = 1 - (this.questionTimer / 15);
+            timerBar.style.width = `${Math.max(0, timeLeft) * 100}%`;
+        }
+        
+        if (this.questionTimer >= 15) {
+            this.onQuestionTimeOut();
+        }
     }
 
     updateTimers(deltaTime) {
@@ -742,23 +768,15 @@ class CIDDefenderGame {
             this.spawnWave();
             this.waveTimer = 0;
         }
-        
-        // Timer para preguntas
-        if (this.currentState === GAME_STATES.QUESTION) {
-            this.questionTimer += deltaTime;
-            const timerBar = document.querySelector('.timer-bar');
-            if (timerBar) {
-                const timeLeft = 1 - (this.questionTimer / 15);
-                timerBar.style.width = `${Math.max(0, timeLeft) * 100}%`;
-            }
-            
-            if (this.questionTimer >= 15) {
-                this.onQuestionTimeOut();
-            }
-        }
     }
 
+    // MEJORA: Enemigos se detienen completamente durante preguntas
     updateEnemies(deltaTime) {
+        // Si estamos en estado QUESTION, no actualizar enemigos
+        if (this.currentState === GAME_STATES.QUESTION) {
+            return;
+        }
+        
         this.enemies = this.enemies.filter(enemy => {
             if (!enemy.targetDefensor) {
                 // Asignar defensor objetivo
@@ -790,6 +808,7 @@ class CIDDefenderGame {
         });
     }
 
+    // MEJORA IMPORTANTE: Pausa completa del juego al activar ataque
     triggerAtaque(enemy, defensor) {
         // NUEVO: Daño balanceado según oleada
         const balancedDamage = this.calculateBalancedDamage(enemy.damage, this.currentWave);
@@ -803,10 +822,17 @@ class CIDDefenderGame {
             originalDamage: enemy.damage // Guardar para referencia
         };
         
+        // MEJORA: Pausar completamente el juego
         this.setGameState(GAME_STATES.QUESTION);
     }
 
+    // MEJORA: Torres no disparan durante preguntas
     updateTowers(deltaTime) {
+        // Si estamos en estado QUESTION, no actualizar torres
+        if (this.currentState === GAME_STATES.QUESTION) {
+            return;
+        }
+        
         this.towers.forEach(tower => {
             tower.lastFireTime += deltaTime;
             
@@ -863,7 +889,13 @@ class CIDDefenderGame {
         this.createTowerEffect(tower.x, tower.y, tower.color);
     }
 
+    // MEJORA: Proyectiles se detienen durante preguntas
     updateProjectiles(deltaTime) {
+        // Si estamos en estado QUESTION, no actualizar proyectiles
+        if (this.currentState === GAME_STATES.QUESTION) {
+            return;
+        }
+        
         this.projectiles = this.projectiles.filter(projectile => {
             if (!projectile.target || projectile.target.health <= 0) return false;
             
@@ -928,7 +960,13 @@ class CIDDefenderGame {
         this.createHitEffect(projectile.target.x, projectile.target.y);
     }
 
+    // MEJORA: Partículas se detienen durante preguntas
     updateParticles(deltaTime) {
+        // Si estamos en estado QUESTION, no actualizar partículas
+        if (this.currentState === GAME_STATES.QUESTION) {
+            return;
+        }
+        
         this.particles = this.particles.filter(particle => {
             particle.x += particle.vx * deltaTime;
             particle.y += particle.vy * deltaTime;
@@ -1039,8 +1077,20 @@ class CIDDefenderGame {
             this.onWrongAnswer();
         }
         
+        // MEJORA: Limpiar el enemigo del ataque actual
+        if (this.ataqueActual && this.ataqueActual.enemy) {
+            // Eliminar el enemigo del array
+            const enemyIndex = this.enemies.indexOf(this.ataqueActual.enemy);
+            if (enemyIndex > -1) {
+                this.enemies.splice(enemyIndex, 1);
+                console.log(`🗑️ Enemigo eliminado después del ataque`);
+            }
+        }
+        
         this.ataqueActual = null;
         this.currentQuestion = null;
+        
+        // MEJORA: Reanudar el juego completamente
         this.setGameState(GAME_STATES.PLAYING);
     }
 
@@ -1048,6 +1098,15 @@ class CIDDefenderGame {
         console.log('⏰ Tiempo agotado para responder');
         this.updateStats(false); // Respuesta incorrecta por tiempo
         this.onWrongAnswer();
+        
+        // MEJORA: Limpiar el enemigo del ataque actual
+        if (this.ataqueActual && this.ataqueActual.enemy) {
+            const enemyIndex = this.enemies.indexOf(this.ataqueActual.enemy);
+            if (enemyIndex > -1) {
+                this.enemies.splice(enemyIndex, 1);
+            }
+        }
+        
         this.ataqueActual = null;
         this.currentQuestion = null;
         this.setGameState(GAME_STATES.PLAYING);
@@ -1071,7 +1130,7 @@ class CIDDefenderGame {
                 this.createHealEffect(defensor.posicion.x, defensor.posicion.y);
             }
             
-            // El enemigo también recibe daño
+            // El enemigo también recibe daño (pero ya será eliminado)
             this.ataqueActual.enemy.health -= this.ataqueActual.damage * 2;
             
             if (this.ataqueActual.enemy.health <= 0) {

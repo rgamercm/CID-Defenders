@@ -1,6 +1,7 @@
 /**
  * SISTEMA DE TORRES MEJORADO - CID DEFENDER
  * Torres con habilidades especiales contra enemigos
+ * MEJORA: Torres se detienen completamente durante preguntas
  */
 
 class TowerManager {
@@ -205,9 +206,23 @@ class Tower {
         // Efectos visuales
         this.attackEffectTimer = 0;
         this.isAttacking = false;
+
+        // MEJORA: Estado para controlar si está activa
+        this.isActive = true;
     }
 
-    update(deltaTime, enemies, projectiles) {
+    // MEJORA IMPORTANTE: Torres se detienen durante preguntas
+    update(deltaTime, enemies, projectiles, gameState) {
+        // MEJORA: Si el juego está en estado QUESTION, no hacer nada
+        if (gameState === 'question') {
+            // Congelar completamente la torre durante preguntas
+            this.updateEffects(deltaTime); // Solo actualizar efectos visuales
+            return;
+        }
+
+        // Solo actualizar si la torre está activa
+        if (!this.isActive) return;
+
         this.lastFireTime += deltaTime;
 
         if (this.lastFireTime >= this.cooldown) {
@@ -223,7 +238,9 @@ class Tower {
     }
 
     findTarget(enemies) {
+        // MEJORA: Filtrar solo enemigos que estén vivos y activos
         const enemiesInRange = enemies.filter(enemy => 
+            enemy.health > 0 && 
             Math.sqrt((this.x - enemy.x) ** 2 + (this.y - enemy.y) ** 2) <= this.range
         );
 
@@ -415,6 +432,11 @@ class Tower {
         };
         return descriptions[this.special] || 'Sin habilidad especial';
     }
+
+    // MEJORA: Método para activar/desactivar torre
+    setActive(active) {
+        this.isActive = active;
+    }
 }
 
 class Projectile {
@@ -434,9 +456,21 @@ class Projectile {
         this.slowAmount = this.special === 'slow' ? 0.5 : 1;
         this.slowDuration = this.special === 'slow' ? 2.0 : 0;
         this.blockDuration = this.special === 'block' ? 1.5 : 0;
+
+        // MEJORA: Estado para controlar si está activo
+        this.isActive = true;
     }
 
-    update(deltaTime) {
+    // MEJORA IMPORTANTE: Proyectiles se detienen durante preguntas
+    update(deltaTime, gameState) {
+        // MEJORA: Si el juego está en estado QUESTION, no hacer nada
+        if (gameState === 'question') {
+            // Congelar completamente el proyectil durante preguntas
+            return true; // Mantener el proyectil pero no moverlo
+        }
+
+        if (!this.isActive) return false;
+
         if (!this.target || this.target.health <= 0) {
             return false; // Proyectil debe ser eliminado
         }
@@ -517,6 +551,11 @@ class Projectile {
             ctx.stroke();
             ctx.setLineDash([]);
         }
+    }
+
+    // MEJORA: Método para activar/desactivar proyectil
+    setActive(active) {
+        this.isActive = active;
     }
 }
 
