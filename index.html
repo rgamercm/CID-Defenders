@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CID Defender - Seguridad Lógica</title>
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+    <!-- Contenedor Principal -->
+    <div id="gameContainer">
+        
+        <!-- Pantalla de INTRO con Video IA -->
+        <div id="introScreen" class="screen active">
+            <video id="introVideo" muted>
+                <source src="assets/videos/intro-ia.mp4" type="video/mp4">
+                Tu navegador no soporta el video.
+            </video>
+            <!-- Fallback animado si no hay video -->
+            <div id="animatedIntro" class="fallback-intro">
+                <div class="intro-content">
+                    <h1>CID DEFENDER</h1>
+                    <div class="loading-bar">
+                        <div class="loading-progress"></div>
+                    </div>
+                    <p>Protege los pilares de la seguridad informática</p>
+                </div>
+            </div>
+            <button id="skipIntro" class="skip-btn">Saltar Intro</button>
+        </div>
+
+        <!-- Pantalla de MENÚ PRINCIPAL -->
+        <div id="menuScreen" class="screen">
+            <div class="menu-content">
+                <h1>CID DEFENDER</h1>
+                <div class="menu-options">
+                    <button id="startGame" class="menu-btn">Nuevo Juego</button>
+                    <button id="showInstructions" class="menu-btn">Instrucciones</button>
+                    <button id="exitGame" class="menu-btn">Salir</button>
+                </div>
+                <div class="game-info">
+                    <p>Protege la <span class="cid-text">Confidencialidad, Integridad y Disponibilidad</span></p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Pantalla de JUEGO PRINCIPAL -->
+        <div id="gameScreen" class="screen">
+            <canvas id="gameCanvas" width="800" height="500"></canvas>
+            
+            <!-- UI de Control durante el juego -->
+            <div id="gameUI">
+                <div class="top-bar">
+                    <div class="score">Puntos: <span id="scoreValue">0</span></div>
+                    <div class="lives">Vidas: <span id="livesValue">3</span></div>
+                    <div class="wave">Oleada: <span id="waveValue">1</span></div>
+                </div>
+                
+                <div class="control-buttons">
+                    <button id="pauseGame" class="control-btn">⏸️ Pausa</button>
+                    <button id="exitToMenu" class="control-btn">🏠 Menú</button>
+                </div>
+
+                <!-- Indicadores de Pilares CID -->
+                <div class="cid-indicators">
+                    <div class="pilar" id="pilar-c">
+                        <div class="pilar-bar" style="background: #3498db;"></div>
+                        <span>Confidencialidad</span>
+                    </div>
+                    <div class="pilar" id="pilar-i">
+                        <div class="pilar-bar" style="background: #2ecc71;"></div>
+                        <span>Integridad</span>
+                    </div>
+                    <div class="pilar" id="pilar-d">
+                        <div class="pilar-bar" style="background: #e74c3c;"></div>
+                        <span>Disponibilidad</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Pantalla de PAUSA -->
+        <div id="pauseScreen" class="screen overlay">
+            <div class="pause-content">
+                <h2>JUEGO EN PAUSA</h2>
+                <div class="pause-options">
+                    <button id="resumeGame" class="pause-btn">Reanudar</button>
+                    <button id="restartGame" class="pause-btn">Reiniciar</button>
+                    <button id="quitToMenu" class="pause-btn">Salir al Menú</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Pantalla de PREGUNTA -->
+        <div id="questionScreen" class="screen overlay">
+            <div class="question-content">
+                <h3 id="questionText">¿Qué principio de seguridad protege contra modificaciones no autorizadas?</h3>
+                <div id="optionsContainer" class="options-grid">
+                    <!-- Las opciones se generan dinámicamente -->
+                </div>
+                <div class="question-timer">
+                    <div class="timer-bar"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Pantalla de GAME OVER -->
+        <div id="gameOverScreen" class="screen overlay">
+            <div class="end-game-content">
+                <h2>GAME OVER</h2>
+                <p>Puntuación Final: <span id="finalScore">0</span></p>
+                <div class="end-buttons">
+                    <button id="restartFromGameOver" class="end-btn">Reintentar</button>
+                    <button id="menuFromGameOver" class="end-btn">Menú Principal</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Pantalla de VICTORIA -->
+        <div id="victoryScreen" class="screen overlay">
+            <div class="end-game-content victory">
+                <h2>¡VICTORIA!</h2>
+                <p>Has protegido exitosamente los pilares CID</p>
+                <p>Puntuación: <span id="victoryScore">0</span></p>
+                <div class="end-buttons">
+                    <button id="restartFromVictory" class="end-btn">Jugar Again</button>
+                    <button id="menuFromVictory" class="end-btn">Menú Principal</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Pantalla de INSTRUCCIONES -->
+        <div id="instructionsScreen" class="screen overlay">
+            <div class="instructions-content">
+                <h2>INSTRUCCIONES</h2>
+                <div class="instructions-text">
+                    <h3>🎯 Objetivo</h3>
+                    <p>Protege los tres pilares de seguridad (CID) de los ataques cibernéticos:</p>
+                    <ul>
+                        <li>🔵 <strong>Confidencialidad</strong>: Protege datos sensibles</li>
+                        <li>🟢 <strong>Integridad</strong>: Previene modificaciones no autorizadas</li>
+                        <li>🔴 <strong>Disponibilidad</strong>: Mantiene servicios accesibles</li>
+                    </ul>
+
+                    <h3>🎮 Cómo Jugar</h3>
+                    <ul>
+                        <li>Responde preguntas correctamente para construir defensas</li>
+                        <li>Cada respuesta correcta = Nueva torre disponible</li>
+                        <li>Cada error = Enemigos más fuertes</li>
+                        <li>Usa las defensas adecuadas contra cada tipo de amenaza</li>
+                    </ul>
+
+                    <h3>🛡️ Defensas Disponibles</h3>
+                    <ul>
+                        <li><strong>Firewall</strong>: Defensa básica contra virus</li>
+                        <li><strong>Cifrado</strong>: Protege contra fugas de datos</li>
+                        <li><strong>IDS</strong>: Detecta y elimina amenazas avanzadas</li>
+                    </ul>
+                </div>
+                <button id="backToMenu" class="menu-btn">Volver al Menú</button>
+            </div>
+        </div>
+
+    </div>
+
+    <!-- Scripts -->
+    <script src="js/utils.js"></script>
+    <script src="js/questions.js"></script>
+    <script src="js/enemies.js"></script>
+    <script src="js/towers.js"></script>
+    <script src="js/ui.js"></script>
+    <script src="js/game.js"></script>
+</body>
+</html>
