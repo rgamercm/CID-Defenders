@@ -211,16 +211,16 @@ class Enemy {
         // Comportamientos especiales según tipo
         switch (this.type) {
             case 'ddos':
-                // DDoS prefiere atacar al administrador
-                this.targetDefensor = defensoresVivos.find(d => d.nombre === "Admin") || defensoresVivos[0];
+                // DDoS prefiere atacar a la Disponibilidad
+                this.targetDefensor = defensoresVivos.find(d => d.nombre === "Disponibilidad") || defensoresVivos[0];
                 break;
             case 'phishing':
-                // Phishing prefiere atacar al usuario
-                this.targetDefensor = defensoresVivos.find(d => d.nombre === "Usuario") || defensoresVivos[0];
+                // Phishing prefiere atacar a la Confidencialidad
+                this.targetDefensor = defensoresVivos.find(d => d.nombre === "Confidencialidad") || defensoresVivos[0];
                 break;
             case 'ransomware':
-                // Ransomware prefiere atacar al analista
-                this.targetDefensor = defensoresVivos.find(d => d.nombre === "Analista") || defensoresVivos[0];
+                // Ransomware prefiere atacar a la Integridad
+                this.targetDefensor = defensoresVivos.find(d => d.nombre === "Integridad") || defensoresVivos[0];
                 break;
             default:
                 // Enemigos normales eligen al azar

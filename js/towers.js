@@ -134,9 +134,9 @@ class TowerManager {
     isValidBuildArea(x, y) {
         // Áreas prohibidas (cerca de defensores)
         const restrictedAreas = [
-            { x: 100, y: 250, radius: 60 },  // Alrededor del Admin
-            { x: 400, y: 250, radius: 60 },  // Alrededor del Analista
-            { x: 700, y: 250, radius: 60 },  // Alrededor del Usuario
+            { x: 100, y: 250, radius: 60 },  // Alrededor de Confidencialidad
+            { x: 400, y: 250, radius: 60 },  // Alrededor de Integridad
+            { x: 700, y: 250, radius: 60 },  // Alrededor de Disponibilidad
         ];
 
         return !restrictedAreas.some(area => 
