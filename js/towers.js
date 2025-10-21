@@ -1,6 +1,6 @@
 /**
- * SISTEMA DE TORRES DEFENSIVAS - CID DEFENDER
- * Clases y comportamientos para las defensas de seguridad
+ * SISTEMA DE TORRES MEJORADO - CID DEFENDER
+ * Torres con habilidades especiales contra enemigos
  */
 
 class TowerManager {
@@ -15,73 +15,70 @@ class TowerManager {
         this.towerConfigs = {
             [this.towerTypes.FIREWALL]: {
                 name: 'Firewall',
-                description: 'Defensa básica que filtra amenazas simples',
+                description: 'Bloquea ataques enemigos temporalmente',
                 cost: 100,
-                damage: 15,
+                damage: 25,
                 range: 120,
                 fireRate: 1.0,
                 color: '#3b82f6',
                 radius: 20,
                 projectileColor: '#60a5fa',
-                special: null
+                special: 'block',
+                upgradeCost: 80,
+                icon: '🛡️'
             },
             [this.towerTypes.ENCRYPTION]: {
                 name: 'Cifrado',
-                description: 'Protege datos con cifrado avanzado',
+                description: 'Ralentiza enemigos con cifrado pesado',
                 cost: 150,
-                damage: 10,
+                damage: 20,
                 range: 100,
-                fireRate: 1.5,
+                fireRate: 1.2,
                 color: '#8b5cf6',
                 radius: 18,
                 projectileColor: '#a78bfa',
-                special: 'slow'
+                special: 'slow',
+                upgradeCost: 100,
+                icon: '🔒'
             },
             [this.towerTypes.IDS]: {
                 name: 'Sistema de Detección',
-                description: 'Detecta y elimina amenazas avanzadas',
+                description: 'Daño en área contra grupos de enemigos',
                 cost: 200,
-                damage: 25,
+                damage: 35,
                 range: 140,
-                fireRate: 0.7,
+                fireRate: 0.8,
                 color: '#ef4444',
                 radius: 22,
                 projectileColor: '#fca5a5',
-                special: 'splash'
+                special: 'splash',
+                upgradeCost: 120,
+                icon: '👁️'
             },
             [this.towerTypes.ANTIVIRUS]: {
                 name: 'Antivirus',
-                description: 'Elimina malware conocido rápidamente',
+                description: 'Fuego rápido contra amenazas individuales',
                 cost: 180,
-                damage: 20,
+                damage: 30,
                 range: 110,
-                fireRate: 0.9,
+                fireRate: 1.5,
                 color: '#10b981',
                 radius: 19,
                 projectileColor: '#34d399',
-                special: 'rapid_fire'
+                special: 'rapid_fire',
+                upgradeCost: 110,
+                icon: '💊'
             }
         };
 
-        this.availableTowers = [];
+        this.availableTowers = ['firewall', 'encryption'];
         this.selectedTowerType = null;
     }
 
-    /**
-     * GESTIÓN DE TORRES DISPONIBLES
-     */
     addAvailableTower(type) {
         if (this.towerConfigs[type] && !this.availableTowers.includes(type)) {
             this.availableTowers.push(type);
-            utils.log(`Torre ${type} desbloqueada`);
-            this.updateTowerUI();
-        }
-    }
-
-    removeAvailableTower(type) {
-        const index = this.availableTowers.indexOf(type);
-        if (index > -1) {
-            this.availableTowers.splice(index, 1);
+            console.log(`🎉 Torre desbloqueada: ${this.towerConfigs[type].name}`);
             this.updateTowerUI();
         }
     }
@@ -89,9 +86,10 @@ class TowerManager {
     selectTowerType(type) {
         if (this.availableTowers.includes(type)) {
             this.selectedTowerType = type;
-            utils.log(`Torre ${type} seleccionada para construcción`);
+            console.log(`🎯 Torre seleccionada: ${this.towerConfigs[type].name}`);
             return true;
         }
+        console.log(`❌ Torre no disponible: ${type}`);
         return false;
     }
 
@@ -102,34 +100,31 @@ class TowerManager {
         return null;
     }
 
-    /**
-     * CONSTRUCCIÓN DE TORRES
-     */
-    canBuildTower(score, x, y, existingTowers) {
+    canBuildTower(score, x, y, towers) {
         const config = this.getSelectedTowerConfig();
         if (!config) return false;
 
         // Verificar costo
         if (score < config.cost) {
-            utils.log('Puntos insuficientes para construir torre');
+            console.log(`💰 Puntos insuficientes: ${score}/${config.cost}`);
             return false;
         }
 
         // Verificar posición válida (no muy cerca de otras torres)
-        const tooClose = existingTowers.some(tower => {
-            const distance = utils.distance(x, y, tower.x, tower.y);
-            return distance < 60; // Distancia mínima entre torres
+        const tooClose = towers.some(tower => {
+            const distance = Math.sqrt((x - tower.x) ** 2 + (y - tower.y) ** 2);
+            return distance < 60;
         });
 
         if (tooClose) {
-            utils.log('Posición muy cerca de otra torre');
+            console.log('📍 Posición muy cerca de otra torre');
             return false;
         }
 
         // Verificar que está en área de construcción válida
         const validArea = this.isValidBuildArea(x, y);
         if (!validArea) {
-            utils.log('Posición de construcción inválida');
+            console.log('🚫 Área de construcción inválida');
             return false;
         }
 
@@ -137,19 +132,19 @@ class TowerManager {
     }
 
     isValidBuildArea(x, y) {
-        // Áreas donde se pueden construir torres (evitar bordes y pilares)
-        const invalidAreas = [
-            { x: 100, y: 250, radius: 50 }, // Alrededor de confidencialidad
-            { x: 400, y: 250, radius: 50 }, // Alrededor de integridad
-            { x: 700, y: 250, radius: 50 }, // Alrededor de disponibilidad
+        // Áreas prohibidas (cerca de defensores)
+        const restrictedAreas = [
+            { x: 100, y: 250, radius: 60 },  // Alrededor del Admin
+            { x: 400, y: 250, radius: 60 },  // Alrededor del Analista
+            { x: 700, y: 250, radius: 60 },  // Alrededor del Usuario
         ];
 
-        return !invalidAreas.some(area => 
-            utils.distance(x, y, area.x, area.y) < area.radius
+        return !restrictedAreas.some(area => 
+            Math.sqrt((x - area.x) ** 2 + (y - area.y) ** 2) < area.radius
         );
     }
 
-    buildTower(x, y, projectiles) {
+    buildTower(x, y) {
         const config = this.getSelectedTowerConfig();
         if (!config) return null;
 
@@ -163,43 +158,31 @@ class TowerManager {
             color: config.color,
             radius: config.radius,
             projectileColor: config.projectileColor,
-            special: config.special
+            special: config.special,
+            upgradeCost: config.upgradeCost,
+            name: config.name,
+            description: config.description,
+            icon: config.icon
         });
 
-        // Reset selección después de construir
-        this.selectedTowerType = null;
-
+        console.log(`🏗️ Torre construida: ${config.name}`);
         return tower;
-    }
-
-    /**
-     * ACTUALIZACIÓN DE TORRES
-     */
-    updateTowers(towers, deltaTime, enemies, projectiles) {
-        towers.forEach(tower => {
-            if (tower.update) {
-                tower.update(deltaTime, enemies, projectiles);
-            }
-        });
-    }
-
-    /**
-     * INTERFAZ DE USUARIO
-     */
-    updateTowerUI() {
-        // Esta función se llamará desde el juego principal
-        // para actualizar la UI de selección de torres
-        utils.log('Actualizando UI de torres disponibles:', this.availableTowers);
     }
 
     getTowerCost(type) {
         return this.towerConfigs[type]?.cost || 0;
+    }
+
+    updateTowerUI() {
+        // Esta función será llamada desde UIManager
+        console.log('🔄 Actualizando UI de torres');
     }
 }
 
 class Tower {
     constructor(config) {
         this.type = config.type;
+        this.name = config.name;
         this.x = config.x;
         this.y = config.y;
         this.damage = config.damage;
@@ -209,13 +192,15 @@ class Tower {
         this.radius = config.radius;
         this.projectileColor = config.projectileColor;
         this.special = config.special;
+        this.description = config.description;
+        this.icon = config.icon;
 
         // Estado de la torre
         this.target = null;
         this.lastFireTime = 0;
         this.cooldown = 1.0 / this.fireRate;
         this.level = 1;
-        this.upgradeCost = 50;
+        this.upgradeCost = config.upgradeCost;
 
         // Efectos visuales
         this.attackEffectTimer = 0;
@@ -223,15 +208,12 @@ class Tower {
     }
 
     update(deltaTime, enemies, projectiles) {
-        // Buscar objetivo
-        this.findTarget(enemies);
+        this.lastFireTime += deltaTime;
 
-        // Atacar si hay objetivo
-        if (this.target && this.target.health > 0) {
-            this.lastFireTime += deltaTime;
-
-            if (this.lastFireTime >= this.cooldown) {
-                this.attack(projectiles);
+        if (this.lastFireTime >= this.cooldown) {
+            this.target = this.findTarget(enemies);
+            if (this.target) {
+                this.fire(projectiles);
                 this.lastFireTime = 0;
             }
         }
@@ -241,52 +223,55 @@ class Tower {
     }
 
     findTarget(enemies) {
-        // Filtrar enemigos en rango
         const enemiesInRange = enemies.filter(enemy => 
-            utils.distance(this.x, this.y, enemy.x, enemy.y) <= this.range
+            Math.sqrt((this.x - enemy.x) ** 2 + (this.y - enemy.y) ** 2) <= this.range
         );
 
         if (enemiesInRange.length === 0) {
-            this.target = null;
-            return;
+            return null;
         }
 
-        // Estrategia de selección de objetivo según tipo de torre
+        // Estrategia de selección según tipo de torre
         switch (this.special) {
-            case 'slow':
-                // Prefiere enemigos rápidos
-                this.target = enemiesInRange.reduce((fastest, current) => 
-                    current.speed > fastest.speed ? current : fastest
-                );
-                break;
-            case 'splash':
-                // Prefiere grupos de enemigos
-                this.target = this.findBestSplashTarget(enemiesInRange);
-                break;
             case 'rapid_fire':
-                // Prefiere enemigos con poca salud
-                this.target = enemiesInRange.reduce((weakest, current) => 
+                // Antivirus: prioriza enemigos con poca salud
+                return enemiesInRange.reduce((weakest, current) => 
                     current.health < weakest.health ? current : weakest
                 );
-                break;
+
+            case 'splash':
+                // IDS: busca enemigos con más enemigos cerca
+                return this.findBestSplashTarget(enemiesInRange);
+
+            case 'slow':
+                // Cifrado: prioriza enemigos rápidos
+                return enemiesInRange.reduce((fastest, current) => 
+                    current.speed > fastest.speed ? current : fastest
+                );
+
+            case 'block':
+                // Firewall: prioriza enemigos con más daño
+                return enemiesInRange.reduce((strongest, current) => 
+                    current.damage > strongest.damage ? current : strongest
+                );
+
             default:
-                // Torre básica: el enemigo más cercano
-                this.target = enemiesInRange.reduce((closest, current) => {
-                    const distCurrent = utils.distance(this.x, this.y, current.x, current.y);
-                    const distClosest = utils.distance(this.x, this.y, closest.x, closest.y);
+                // Torre básica: enemigo más cercano
+                return enemiesInRange.reduce((closest, current) => {
+                    const distCurrent = Math.sqrt((this.x - current.x) ** 2 + (this.y - current.y) ** 2);
+                    const distClosest = Math.sqrt((this.x - closest.x) ** 2 + (this.y - closest.y) ** 2);
                     return distCurrent < distClosest ? current : closest;
                 });
         }
     }
 
     findBestSplashTarget(enemies) {
-        // Encontrar el enemigo que tenga más enemigos cerca
         let bestTarget = enemies[0];
         let maxNearby = 0;
 
         enemies.forEach(enemy => {
             const nearby = enemies.filter(other => 
-                utils.distance(enemy.x, enemy.y, other.x, other.y) <= 40 // Radio de splash
+                Math.sqrt((enemy.x - other.x) ** 2 + (enemy.y - other.y) ** 2) <= 50
             ).length;
 
             if (nearby > maxNearby) {
@@ -298,19 +283,19 @@ class Tower {
         return bestTarget;
     }
 
-    attack(projectiles) {
+    fire(projectiles) {
         if (!this.target) return;
 
-        // Crear proyectil
         const projectile = new Projectile({
             x: this.x,
             y: this.y,
             target: this.target,
             damage: this.damage,
             speed: 200,
-            radius: 4,
+            radius: 6,
             color: this.projectileColor,
-            special: this.special
+            special: this.special,
+            tower: this
         });
 
         projectiles.push(projectile);
@@ -319,7 +304,7 @@ class Tower {
         this.isAttacking = true;
         this.attackEffectTimer = 0.1;
 
-        utils.log(`${this.type} atacó a ${this.target.type}`);
+        console.log(`🎯 ${this.name} ataca a ${this.target.name}`);
     }
 
     updateEffects(deltaTime) {
@@ -332,16 +317,19 @@ class Tower {
     }
 
     upgrade() {
-        if (this.level >= 3) return false; // Máximo nivel
+        if (this.level >= 3) {
+            console.log('🚫 Torre ya está en nivel máximo');
+            return false;
+        }
 
         this.level++;
-        this.damage *= 1.5;
-        this.range *= 1.2;
-        this.fireRate *= 1.3;
+        this.damage = Math.floor(this.damage * 1.4);
+        this.range = Math.floor(this.range * 1.15);
+        this.fireRate *= 1.25;
         this.cooldown = 1.0 / this.fireRate;
-        this.upgradeCost *= 2;
+        this.upgradeCost = Math.floor(this.upgradeCost * 1.5);
 
-        utils.log(`Torre ${this.type} mejorada a nivel ${this.level}`);
+        console.log(`⬆️ ${this.name} mejorada a nivel ${this.level}`);
         return true;
     }
 
@@ -359,13 +347,8 @@ class Tower {
         ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
         ctx.fill();
 
-        // Detalles según tipo
+        // Detalles de la torre
         this.drawTowerDetails(ctx);
-
-        // Rango de ataque (solo cuando está seleccionada)
-        if (this === game?.selectedTower) {
-            this.drawRangeCircle(ctx);
-        }
 
         // Indicador de nivel
         this.drawLevelIndicator(ctx);
@@ -375,25 +358,26 @@ class Tower {
 
     drawTowerDetails(ctx) {
         ctx.fillStyle = '#ffffff';
-        ctx.font = '12px Arial';
+        ctx.font = '16px Arial';
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
 
-        // Iconos según tipo de torre
-        switch (this.type) {
-            case 'firewall':
-                ctx.fillText('🛡️', this.x, this.y);
-                break;
-            case 'encryption':
-                ctx.fillText('🔒', this.x, this.y);
-                break;
-            case 'ids':
-                ctx.fillText('👁️', this.x, this.y);
-                break;
-            case 'antivirus':
-                ctx.fillText('💊', this.x, this.y);
-                break;
-        }
+        // Icono de la torre
+        ctx.fillText(this.icon, this.x, this.y);
+
+        // Nombre pequeño debajo
+        ctx.font = '10px Arial';
+        ctx.fillText(this.name, this.x, this.y + this.radius + 15);
+    }
+
+    drawLevelIndicator(ctx) {
+        ctx.fillStyle = '#fbbf24';
+        ctx.font = '12px Arial';
+        ctx.textAlign = 'center';
+        
+        // Estrellas según nivel
+        const stars = '★'.repeat(this.level);
+        ctx.fillText(stars, this.x, this.y - this.radius - 8);
     }
 
     drawRangeCircle(ctx) {
@@ -408,41 +392,28 @@ class Tower {
         ctx.setLineDash([]);
     }
 
-    drawLevelIndicator(ctx) {
-        ctx.fillStyle = '#fbbf24';
-        ctx.font = '10px Arial';
-        ctx.textAlign = 'center';
-        
-        // Estrellas según nivel
-        const stars = '★'.repeat(this.level);
-        ctx.fillText(stars, this.x, this.y + this.radius + 10);
-    }
-
     getInfo() {
-        const config = towerManager.towerConfigs[this.type];
         return {
-            name: config.name,
-            description: config.description,
+            name: this.name,
+            description: this.description,
             level: this.level,
             damage: this.damage,
             range: this.range,
-            fireRate: this.fireRate,
+            fireRate: this.fireRate.toFixed(1),
             upgradeCost: this.upgradeCost,
-            special: this.getSpecialDescription()
+            special: this.getSpecialDescription(),
+            nextLevel: this.level < 3 ? `Nivel ${this.level + 1}` : 'Máximo'
         };
     }
 
     getSpecialDescription() {
-        switch (this.special) {
-            case 'slow':
-                return 'Ralentiza enemigos';
-            case 'splash':
-                return 'Daño en área';
-            case 'rapid_fire':
-                return 'Fuego rápido';
-            default:
-                return 'Sin habilidad especial';
-        }
+        const descriptions = {
+            'block': '🛡️ Bloquea ataques enemigos',
+            'slow': '🐢 Ralentiza enemigos',
+            'splash': '💥 Daño en área',
+            'rapid_fire': '⚡ Fuego rápido'
+        };
+        return descriptions[this.special] || 'Sin habilidad especial';
     }
 }
 
@@ -456,11 +427,13 @@ class Projectile {
         this.radius = config.radius;
         this.color = config.color;
         this.special = config.special;
+        this.tower = config.tower;
 
         // Efectos especiales
-        this.splashRadius = this.special === 'splash' ? 40 : 0;
+        this.splashRadius = this.special === 'splash' ? 50 : 0;
         this.slowAmount = this.special === 'slow' ? 0.5 : 1;
-        this.slowDuration = this.special === 'slow' ? 3.0 : 0;
+        this.slowDuration = this.special === 'slow' ? 2.0 : 0;
+        this.blockDuration = this.special === 'block' ? 1.5 : 0;
     }
 
     update(deltaTime) {
@@ -468,18 +441,15 @@ class Projectile {
             return false; // Proyectil debe ser eliminado
         }
 
-        // Movimiento hacia el objetivo
         const dx = this.target.x - this.x;
         const dy = this.target.y - this.y;
         const distance = Math.sqrt(dx * dx + dy * dy);
 
         if (distance < this.speed * deltaTime) {
-            // Golpeó al objetivo
             this.onHit();
             return false;
         }
 
-        // Normalizar y mover
         this.x += (dx / distance) * this.speed * deltaTime;
         this.y += (dy / distance) * this.speed * deltaTime;
 
@@ -487,24 +457,49 @@ class Projectile {
     }
 
     onHit() {
-        // Aplicar daño al objetivo principal
-        this.target.takeDamage(this.damage);
+        console.log(`💥 Proyectil impacta a ${this.target.name}`);
 
-        // Efectos especiales
-        if (this.special === 'splash' && game) {
-            // Daño en área
-            game.enemies.forEach(enemy => {
-                if (enemy !== this.target && 
-                    utils.distance(this.target.x, this.target.y, enemy.x, enemy.y) <= this.splashRadius) {
-                    enemy.takeDamage(this.damage * 0.5);
-                }
-            });
+        // Aplicar efectos según el tipo de torre
+        switch (this.special) {
+            case 'splash':
+                this.applySplashDamage();
+                break;
+                
+            case 'slow':
+                this.target.slow(this.slowAmount, this.slowDuration);
+                this.target.health -= this.damage;
+                break;
+                
+            case 'block':
+                this.target.blockAttacks(this.blockDuration);
+                this.target.health -= this.damage;
+                break;
+                
+            default:
+                this.target.health -= this.damage;
         }
 
-        if (this.special === 'slow' && this.target.slow) {
-            // Ralentizar enemigo
-            this.target.slow(this.slowAmount, this.slowDuration);
+        // Verificar si el enemigo fue eliminado
+        if (this.target.health <= 0) {
+            console.log(`🎯 ${this.target.name} eliminado!`);
         }
+    }
+
+    applySplashDamage() {
+        // Daño al objetivo principal
+        this.target.health -= this.damage;
+        
+        // Buscar enemigos cercanos para daño en área
+        const nearbyEnemies = window.game.enemies.filter(enemy => 
+            enemy !== this.target && 
+            Math.sqrt((this.target.x - enemy.x) ** 2 + (this.target.y - enemy.y) ** 2) <= this.splashRadius
+        );
+        
+        nearbyEnemies.forEach(enemy => {
+            const splashDamage = Math.floor(this.damage * 0.6);
+            enemy.health -= splashDamage;
+            console.log(`💥 Daño en área a ${enemy.name}: -${splashDamage}`);
+        });
     }
 
     draw(ctx) {
@@ -518,7 +513,7 @@ class Projectile {
             ctx.strokeStyle = 'rgba(255, 255, 255, 0.5)';
             ctx.setLineDash([2, 2]);
             ctx.beginPath();
-            ctx.arc(this.x, this.y, this.radius * 2, 0, Math.PI * 2);
+            ctx.arc(this.x, this.y, this.radius * 3, 0, Math.PI * 2);
             ctx.stroke();
             ctx.setLineDash([]);
         }
@@ -527,40 +522,3 @@ class Projectile {
 
 // Instancia global del manager de torres
 const towerManager = new TowerManager();
-
-// Tests de desarrollo
-if (typeof window !== 'undefined' && window.location.hostname === 'localhost') {
-    towerManager.runTests = function() {
-        console.log('=== TESTING Tower System ===');
-
-        // Test configuraciones de torres
-        console.log('✅ Tower configurations:', Object.keys(this.towerConfigs).length === 4);
-
-        // Test sistema de disponibilidad
-        this.addAvailableTower('firewall');
-        console.log('✅ Tower availability:', this.availableTowers.includes('firewall'));
-
-        // Test selección de torres
-        const selectResult = this.selectTowerType('firewall');
-        console.log('✅ Tower selection:', selectResult === true);
-
-        // Test construcción
-        const canBuild = this.canBuildTower(200, 300, 300, []);
-        console.log('✅ Tower building check:', canBuild === true);
-
-        // Test creación de torre
-        const tower = this.buildTower(300, 300, []);
-        console.log('✅ Tower creation:', tower instanceof Tower);
-
-        // Test actualización de torres
-        const testTowers = [tower];
-        const testEnemies = [new Enemy({
-            type: 'virus', x: 350, y: 300, health: 50, maxHealth: 50,
-            speed: 40, damage: 10, radius: 12, color: '#ff0000', score: 10
-        })];
-        const testProjectiles = [];
-        
-        this.updateTowers(testTowers, 0.016, testEnemies, testProjectiles);
-        console.log('✅ Tower updating:', testProjectiles.length > 0);
-    };
-}

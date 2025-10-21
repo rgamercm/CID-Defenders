@@ -1,6 +1,6 @@
 /**
- * SISTEMA DE ENEMIGOS - CID DEFENDER
- * Clases y comportamientos para las amenazas cibernéticas
+ * SISTEMA DE ENEMIGOS RENOVADO - CID DEFENDER
+ * Enemigos que atacan defensores y activan preguntas
  */
 
 class EnemyManager {
@@ -15,61 +15,69 @@ class EnemyManager {
         
         this.enemyConfigs = {
             [this.enemyTypes.VIRUS]: {
-                health: 50,
-                speed: 40,
-                damage: 10,
-                radius: 12,
+                name: 'Virus',
+                health: 40,
+                speed: 45,
+                damage: 20,
+                radius: 14,
                 color: '#ef4444',
-                score: 10,
-                spawnWeight: 3
+                score: 25,
+                spawnWeight: 4,
+                description: 'Se replica rápidamente'
             },
             [this.enemyTypes.TROJAN]: {
-                health: 80,
-                speed: 30,
-                damage: 15,
-                radius: 15,
+                name: 'Troyano',
+                health: 60,
+                speed: 35,
+                damage: 25,
+                radius: 16,
                 color: '#f59e0b',
-                score: 15,
-                spawnWeight: 2
+                score: 30,
+                spawnWeight: 3,
+                description: 'Se disfraza de software legítimo'
             },
             [this.enemyTypes.DDOS]: {
+                name: 'Ataque DDoS',
                 health: 30,
-                speed: 60,
-                damage: 5,
-                radius: 8,
+                speed: 55,
+                damage: 15,
+                radius: 12,
                 color: '#8b5cf6',
-                score: 5,
-                spawnWeight: 4
+                score: 20,
+                spawnWeight: 3,
+                description: 'Satura los servicios'
             },
             [this.enemyTypes.PHISHING]: {
-                health: 100,
-                speed: 25,
-                damage: 20,
-                radius: 18,
+                name: 'Phishing',
+                health: 50,
+                speed: 40,
+                damage: 30,
+                radius: 15,
                 color: '#06b6d4',
-                score: 20,
-                spawnWeight: 1
+                score: 35,
+                spawnWeight: 2,
+                description: 'Engaña para obtener credenciales'
             },
             [this.enemyTypes.RANSOMWARE]: {
-                health: 150,
-                speed: 20,
-                damage: 25,
-                radius: 22,
+                name: 'Ransomware',
+                health: 80,
+                speed: 30,
+                damage: 35,
+                radius: 18,
                 color: '#dc2626',
-                score: 30,
-                spawnWeight: 1
+                score: 40,
+                spawnWeight: 1,
+                description: 'Cifra archivos y exige rescate'
             }
         };
     }
 
-    /**
-     * GENERACIÓN DE OLEADAS
-     */
     spawnWave(waveNumber) {
         const enemies = [];
-        const enemyCount = this.calculateEnemyCount(waveNumber);
+        const baseCount = 2 + Math.floor(waveNumber / 2);
+        const enemyCount = Math.min(baseCount, 6);
         
-        utils.log(`Generando oleada ${waveNumber} con ${enemyCount} enemigos`);
+        console.log(`🎯 Generando oleada ${waveNumber} con ${enemyCount} enemigos`);
         
         for (let i = 0; i < enemyCount; i++) {
             const enemyType = this.selectRandomEnemyType(waveNumber);
@@ -80,85 +88,80 @@ class EnemyManager {
         return enemies;
     }
 
-    calculateEnemyCount(waveNumber) {
-        // Fórmula base: 5 enemigos + 2 por oleada, máximo 20
-        return Math.min(5 + (waveNumber * 2), 20);
-    }
-
     selectRandomEnemyType(waveNumber) {
-        const weights = [];
         const types = Object.values(this.enemyTypes);
-        
-        // Ajustar pesos según oleada
-        types.forEach(type => {
+        const weights = types.map(type => {
             let weight = this.enemyConfigs[type].spawnWeight;
             
-            // En oleadas altas, aumentar probabilidad de enemigos fuertes
-            if (waveNumber > 5) {
-                if (type === this.enemyTypes.RANSOMWARE) weight += 2;
+            // En oleadas altas, más enemigos fuertes
+            if (waveNumber > 3) {
+                if (type === this.enemyTypes.RANSOMWARE) weight += 1;
                 if (type === this.enemyTypes.PHISHING) weight += 1;
             }
+            if (waveNumber > 6) {
+                if (type === this.enemyTypes.RANSOMWARE) weight += 1;
+            }
             
-            weights.push(weight);
+            return weight;
         });
         
-        return utils.randomFromArray(types, weights);
+        return this.weightedRandom(types, weights);
+    }
+
+    weightedRandom(items, weights) {
+        const totalWeight = weights.reduce((sum, weight) => sum + weight, 0);
+        let random = Math.random() * totalWeight;
+        
+        for (let i = 0; i < items.length; i++) {
+            random -= weights[i];
+            if (random <= 0) return items[i];
+        }
+        
+        return items[items.length - 1];
     }
 
     createEnemy(type, waveNumber, index) {
         const config = this.enemyConfigs[type];
         
         // Aumentar dificultad según oleada
-        const waveMultiplier = 1 + (waveNumber * 0.1);
+        const waveMultiplier = 1 + ((waveNumber - 1) * 0.15);
         
         const enemy = new Enemy({
             type: type,
+            name: config.name,
             x: this.getSpawnPosition(index).x,
             y: this.getSpawnPosition(index).y,
-            health: config.health * waveMultiplier,
-            maxHealth: config.health * waveMultiplier,
+            health: Math.floor(config.health * waveMultiplier),
+            maxHealth: Math.floor(config.health * waveMultiplier),
             speed: config.speed,
-            damage: config.damage,
+            damage: Math.floor(config.damage * waveMultiplier),
             radius: config.radius,
             color: config.color,
-            score: config.score
+            score: config.score,
+            description: config.description
         });
         
         return enemy;
     }
 
     getSpawnPosition(index) {
-        // Posiciones de spawn distribuidas en el borde izquierdo
         const spawnPoints = [
-            { x: -30, y: 100 },
-            { x: -30, y: 200 },
-            { x: -30, y: 300 },
-            { x: -30, y: 400 },
-            { x: -30, y: 150 },
-            { x: -30, y: 250 },
-            { x: -30, y: 350 }
+            { x: -40, y: 100 },
+            { x: -40, y: 200 },
+            { x: -40, y: 300 },
+            { x: -40, y: 150 },
+            { x: -40, y: 250 },
+            { x: -40, y: 350 }
         ];
         
         return spawnPoints[index % spawnPoints.length];
-    }
-
-    /**
-     * ACTUALIZACIÓN DE ENEMIGOS
-     */
-    updateEnemies(enemies, deltaTime, pilars) {
-        enemies.forEach(enemy => {
-            if (enemy.update) {
-                enemy.update(deltaTime, pilars);
-            }
-        });
-        
-        return enemies.filter(enemy => enemy.health > 0);
     }
 }
 
 class Enemy {
     constructor(config) {
         this.type = config.type;
+        this.name = config.name;
         this.x = config.x;
         this.y = config.y;
         this.health = config.health;
@@ -168,79 +171,72 @@ class Enemy {
         this.radius = config.radius;
         this.color = config.color;
         this.score = config.score;
+        this.description = config.description;
         
         // Estado del enemigo
-        this.targetPilar = null;
-        this.path = [];
-        this.currentPathIndex = 0;
-        this.lastAttackTime = 0;
-        this.attackCooldown = 1.0; // 1 segundo entre ataques
+        this.targetDefensor = null;
+        this.isAttacking = false;
+        this.attackCooldown = 0;
         
         // Efectos visuales
         this.hitEffectTimer = 0;
-        this.isFlashing = false;
+        this.slowEffectTimer = 0;
+        this.originalSpeed = config.speed;
     }
 
-    update(deltaTime, pilars) {
-        // Buscar pilar objetivo si no tiene
-        if (!this.targetPilar || this.targetPilar.health <= 0) {
-            this.findTargetPilar(pilars);
+    update(deltaTime, defensores) {
+        // Buscar defensor objetivo si no tiene
+        if (!this.targetDefensor || this.targetDefensor.salud <= 0) {
+            this.findTargetDefensor(defensores);
         }
         
+        // Aplicar efectos temporales
+        this.updateEffects(deltaTime);
+        
         // Movimiento hacia el objetivo
-        if (this.targetPilar) {
+        if (this.targetDefensor && this.targetDefensor.salud > 0) {
             this.moveTowardsTarget(deltaTime);
         }
         
-        // Actualizar efectos visuales
-        this.updateEffects(deltaTime);
-    }
-
-    findTargetPilar(pilars) {
-        // Encontrar el pilar más cercano con salud
-        const viablePilars = Object.values(pilars).filter(pilar => pilar.health > 0);
-        
-        if (viablePilars.length === 0) return;
-        
-        // Para algunos enemigos, comportamiento especial
-        switch (this.type) {
-            case 'ddos':
-                // Los DDoS atacan disponibilidad primero
-                this.targetPilar = viablePilars.find(p => this.getPilarName(p) === 'disponibilidad') || 
-                                  viablePilars[0];
-                break;
-            case 'phishing':
-                // Phishing ataca confidencialidad primero
-                this.targetPilar = viablePilars.find(p => this.getPilarName(p) === 'confidencialidad') || 
-                                  viablePilars[0];
-                break;
-            case 'ransomware':
-                // Ransomware ataca integridad primero
-                this.targetPilar = viablePilars.find(p => this.getPilarName(p) === 'integridad') || 
-                                  viablePilars[0];
-                break;
-            default:
-                // Enemigos normales eligen al azar
-                this.targetPilar = utils.randomFromArray(viablePilars);
+        // Actualizar cooldown de ataque
+        if (this.attackCooldown > 0) {
+            this.attackCooldown -= deltaTime;
         }
     }
 
-    getPilarName(pilar) {
-        const positions = {
-            '100': 'confidencialidad',
-            '400': 'integridad', 
-            '700': 'disponibilidad'
-        };
-        return positions[pilar.position.x.toString()];
+    findTargetDefensor(defensores) {
+        const defensoresVivos = Object.values(defensores).filter(d => d.salud > 0);
+        if (defensoresVivos.length === 0) return;
+        
+        // Comportamientos especiales según tipo
+        switch (this.type) {
+            case 'ddos':
+                // DDoS prefiere atacar al administrador
+                this.targetDefensor = defensoresVivos.find(d => d.nombre === "Admin") || defensoresVivos[0];
+                break;
+            case 'phishing':
+                // Phishing prefiere atacar al usuario
+                this.targetDefensor = defensoresVivos.find(d => d.nombre === "Usuario") || defensoresVivos[0];
+                break;
+            case 'ransomware':
+                // Ransomware prefiere atacar al analista
+                this.targetDefensor = defensoresVivos.find(d => d.nombre === "Analista") || defensoresVivos[0];
+                break;
+            default:
+                // Enemigos normales eligen al azar
+                this.targetDefensor = defensoresVivos[Math.floor(Math.random() * defensoresVivos.length)];
+        }
+        
+        console.log(`🎯 ${this.name} apunta a ${this.targetDefensor.nombre}`);
     }
 
     moveTowardsTarget(deltaTime) {
-        const target = this.targetPilar.position;
+        const target = this.targetDefensor.posicion;
         const dx = target.x - this.x;
         const dy = target.y - this.y;
         const distance = Math.sqrt(dx * dx + dy * dy);
         
-        // Normalizar dirección
+        // Normalizar dirección y mover
         if (distance > 0) {
             const moveX = (dx / distance) * this.speed * deltaTime;
             const moveY = (dy / distance) * this.speed * deltaTime;
@@ -249,51 +245,68 @@ class Enemy {
             this.y += moveY;
         }
         
-        // Verificar si llegó al objetivo
-        if (distance < this.radius + 30) {
-            this.attackPilar(deltaTime);
+        // Verificar si llegó al objetivo para atacar
+        if (distance < 40 && this.attackCooldown <= 0) {
+            this.prepareAttack();
         }
     }
 
-    attackPilar(deltaTime) {
-        this.lastAttackTime += deltaTime;
+    prepareAttack() {
+        this.isAttacking = true;
+        console.log(`⚔️ ${this.name} prepara ataque contra ${this.targetDefensor.nombre}`);
         
-        if (this.lastAttackTime >= this.attackCooldown) {
-            this.targetPilar.health -= this.damage;
-            this.lastAttackTime = 0;
-            
-            // Efecto visual de ataque
-            this.isFlashing = true;
-            this.hitEffectTimer = 0.2;
-            
-            utils.log(`${this.type} atacó pilar por ${this.damage} de daño`);
-        }
+        // El ataque se completa en el próximo frame, activando la pregunta
     }
 
     updateEffects(deltaTime) {
-        if (this.isFlashing) {
+        // Efecto de golpe
+        if (this.hitEffectTimer > 0) {
             this.hitEffectTimer -= deltaTime;
-            if (this.hitEffectTimer <= 0) {
-                this.isFlashing = false;
+        }
+        
+        // Efecto de ralentización
+        if (this.slowEffectTimer > 0) {
+            this.slowEffectTimer -= deltaTime;
+            if (this.slowEffectTimer <= 0) {
+                this.speed = this.originalSpeed;
+                console.log(`🐢 ${this.name} recupera velocidad normal`);
             }
         }
     }
 
     takeDamage(amount) {
         this.health -= amount;
-        this.isFlashing = true;
-        this.hitEffectTimer = 0.1;
+        this.hitEffectTimer = 0.2;
+        
+        console.log(`💥 ${this.name} recibe ${amount} de daño - Salud: ${this.health}/${this.maxHealth}`);
         
         return this.health <= 0;
     }
 
+    slow(factor, duration) {
+        this.speed = this.originalSpeed * factor;
+        this.slowEffectTimer = duration;
+        console.log(`🐢 ${this.name} ralentizado al ${factor * 100}% por ${duration}s`);
+    }
+
+    blockAttacks(duration) {
+        this.damage = 0;
+        setTimeout(() => {
+            this.damage = this.originalDamage || 15;
+            console.log(`🛡️ ${this.name} puede atacar nuevamente`);
+        }, duration * 1000);
+        console.log(`🛡️ ${this.name} bloqueado por ${duration}s`);
+    }
+
     draw(ctx) {
-        // Guardar contexto
         ctx.save();
         
         // Efecto de flash cuando es golpeado
-        if (this.isFlashing) {
+        if (this.hitEffectTimer > 0) {
             ctx.fillStyle = '#ffffff';
+        } else if (this.slowEffectTimer > 0) {
+            // Efecto azul cuando está ralentizado
+            ctx.fillStyle = '#60a5fa';
         } else {
             ctx.fillStyle = this.color;
         }
@@ -309,34 +322,34 @@ class Enemy {
         // Barra de salud
         this.drawHealthBar(ctx);
         
-        // Restaurar contexto
+        // Indicador de ataque
+        if (this.isAttacking) {
+            this.drawAttackIndicator(ctx);
+        }
+        
         ctx.restore();
     }
 
     drawEnemyDetails(ctx) {
         ctx.fillStyle = '#ffffff';
-        ctx.font = '10px Arial';
+        ctx.font = '12px Arial';
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
         
         // Iconos según tipo
-        switch (this.type) {
-            case 'virus':
-                ctx.fillText('⚡', this.x, this.y);
-                break;
-            case 'trojan':
-                ctx.fillText('🎁', this.x, this.y);
-                break;
-            case 'ddos':
-                ctx.fillText('🌐', this.x, this.y);
-                break;
-            case 'phishing':
-                ctx.fillText('🎣', this.x, this.y);
-                break;
-            case 'ransomware':
-                ctx.fillText('💀', this.x, this.y);
-                break;
-        }
+        const icons = {
+            virus: '⚡',
+            trojan: '🎁',
+            ddos: '🌐',
+            phishing: '🎣',
+            ransomware: '💀'
+        };
+        
+        ctx.fillText(icons[this.type] || '❓', this.x, this.y);
+        
+        // Nombre del enemigo (pequeño)
+        ctx.font = '9px Arial';
+        ctx.fillText(this.name, this.x, this.y + this.radius + 10);
     }
 
     drawHealthBar(ctx) {
@@ -362,76 +375,33 @@ class Enemy {
         ctx.fillRect(barX, barY, barWidth * healthPercent, barHeight);
     }
 
-    /**
-     * COMPORTAMIENTOS ESPECIALES POR TIPO
-     */
-    getSpecialAbility() {
-        switch (this.type) {
-            case 'trojan':
-                return {
-                    name: 'Camuflaje',
-                    description: 'Más difícil de detectar por algunas torres',
-                    effect: () => this.radius *= 0.8 // Más pequeño
-                };
-            case 'ddos':
-                return {
-                    name: 'Ataque Masivo', 
-                    description: 'Ataca en grupo con otros DDoS',
-                    effect: () => this.speed *= 1.2
-                };
-            case 'ransomware':
-                return {
-                    name: 'Cifrado',
-                    description: 'Reduce la efectividad de las torres cercanas',
-                    effect: () => {} // Se implementaría en el sistema de torres
-                };
-            default:
-                return null;
-        }
+    drawAttackIndicator(ctx) {
+        // Círculo pulsante alrededor del enemigo cuando ataca
+        ctx.strokeStyle = '#ef4444';
+        ctx.lineWidth = 2;
+        ctx.setLineDash([5, 3]);
+        
+        const pulseSize = this.radius + 8 + (Math.sin(Date.now() * 0.01) * 3);
+        
+        ctx.beginPath();
+        ctx.arc(this.x, this.y, pulseSize, 0, Math.PI * 2);
+        ctx.stroke();
+        ctx.setLineDash([]);
+    }
+
+    getInfo() {
+        return {
+            name: this.name,
+            type: this.type,
+            health: this.health,
+            maxHealth: this.maxHealth,
+            damage: this.damage,
+            speed: this.speed,
+            description: this.description,
+            score: this.score
+        };
     }
 }
 
 // Instancia global del manager de enemigos
 const enemyManager = new EnemyManager();
-
-// Tests de desarrollo
-if (typeof window !== 'undefined' && window.location.hostname === 'localhost') {
-    enemyManager.runTests = function() {
-        console.log('=== TESTING Enemy System ===');
-        
-        // Test creación de enemigos
-        const testEnemy = new Enemy({
-            type: 'virus',
-            x: 100,
-            y: 100,
-            health: 50,
-            maxHealth: 50,
-            speed: 40,
-            damage: 10,
-            radius: 12,
-            color: '#ef4444',
-            score: 10
-        });
-        
-        console.log('✅ Enemy class:', testEnemy instanceof Enemy);
-        console.log('✅ Enemy properties:', testEnemy.type === 'virus');
-        
-        // Test generación de oleada
-        const wave = this.spawnWave(1);
-        console.log('✅ Wave generation:', wave.length > 0);
-        console.log('✅ Wave enemies:', wave.every(e => e instanceof Enemy));
-        
-        // Test daño
-        const initialHealth = testEnemy.health;
-        testEnemy.takeDamage(10);
-        console.log('✅ Damage system:', testEnemy.health === initialHealth - 10);
-        
-        // Test selección de tipo
-        const types = [];
-        for (let i = 0; i < 100; i++) {
-            types.push(this.selectRandomEnemyType(1));
-        }
-        const hasVariety = new Set(types).size > 1;
-        console.log('✅ Enemy variety:', hasVariety);
-    };
-}
