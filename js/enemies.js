@@ -1,7 +1,7 @@
 /**
  * SISTEMA DE ENEMIGOS RENOVADO - CID DEFENDER
  * Enemigos que atacan defensores y activan preguntas
- * MEJORA: Spawn multi-direccional desde 4 lados del mapa
+ * MEJORA: Distribución balanceada de ataques entre defensores
  */
 
 class EnemyManager {
@@ -73,7 +73,39 @@ class EnemyManager {
         };
     }
 
-    // MEJORA IMPLEMENTADA: Sistema de spawn points distribuidos en 4 lados
+    // NUEVO: Sistema de distribución balanceada por defensor
+    getBalancedSpawnDistribution(waveNumber, totalEnemies) {
+        const defensorNames = ["Confidencialidad", "Integridad", "Disponibilidad"];
+        const distribution = [];
+        
+        // Calcular enemigos por defensor de forma balanceada
+        const baseEnemiesPerDefensor = Math.floor(totalEnemies / defensorNames.length);
+        const remainingEnemies = totalEnemies % defensorNames.length;
+        
+        // Crear distribución balanceada
+        defensorNames.forEach((defensor, index) => {
+            const enemiesForThisDefensor = baseEnemiesPerDefensor + (index < remainingEnemies ? 1 : 0);
+            
+            for (let i = 0; i < enemiesForThisDefensor; i++) {
+                distribution.push(defensor);
+            }
+        });
+        
+        // Mezclar la distribución para que no sea predecible
+        return this.shuffleArray(distribution);
+    }
+
+    // NUEVO: Función para mezclar array
+    shuffleArray(array) {
+        const newArray = [...array];
+        for (let i = newArray.length - 1; i > 0; i--) {
+            const j = Math.floor(Math.random() * (i + 1));
+            [newArray[i], newArray[j]] = [newArray[j], newArray[i]];
+        }
+        return newArray;
+    }
+
+    // MEJORA: Sistema de spawn points distribuidos en 4 lados
     getSpawnPositions(waveNumber) {
         // Puntos de spawn distribuidos estratégicamente en TODOS los lados
         const spawnPoints = [
@@ -120,58 +152,89 @@ class EnemyManager {
         return spawnPoints;
     }
 
-    // MEJORA IMPLEMENTADA: Distribución inteligente de enemigos entre spawn points
+    // MEJORA IMPLEMENTADA: Distribución inteligente y balanceada de enemigos
     spawnWave(waveNumber) {
         const enemies = [];
         
-        // Sistema de distribución proporcional mantenido
+        // Sistema de distribución proporcional
         const enemiesPerDefensor = Math.min(waveNumber, 3);
         const totalEnemies = enemiesPerDefensor * 3;
         const spawnPoints = this.getSpawnPositions(waveNumber);
         
-        console.log(`🎯 Generando oleada ${waveNumber}: ${enemiesPerDefensor} enemigos por defensor (${totalEnemies} total) desde ${spawnPoints.length} puntos de spawn`);
+        console.log(`🎯 Generando oleada ${waveNumber}: ${enemiesPerDefensor} enemigos por defensor (${totalEnemies} total)`);
         
-        // Nombres de los defensores en orden
-        const defensorNames = ["Confidencialidad", "Integridad", "Disponibilidad"];
+        // NUEVO: Obtener distribución balanceada de defensores
+        const defensorDistribution = this.getBalancedSpawnDistribution(waveNumber, totalEnemies);
+        
+        // Contadores para tracking
+        let defensorCount = {
+            'Confidencialidad': 0,
+            'Integridad': 0,
+            'Disponibilidad': 0
+        };
         
         for (let i = 0; i < totalEnemies; i++) {
-            // Asignar defensor específico a cada enemigo (distribución circular)
-            const defensorIndex = i % 3;
-            const assignedDefensor = defensorNames[defensorIndex];
+            // NUEVO: Usar distribución balanceada en lugar de circular simple
+            const assignedDefensor = defensorDistribution[i];
+            defensorCount[assignedDefensor]++;
             
-            // MEJORA: Distribuir enemigos entre diferentes puntos de spawn de forma balanceada
-            const spawnIndex = i % spawnPoints.length;
-            const spawnPoint = spawnPoints[spawnIndex];
+            // MEJORA: Asignar punto de spawn basado en el defensor objetivo
+            const spawnPoint = this.getOptimalSpawnPoint(spawnPoints, assignedDefensor);
             
             const enemyType = this.selectRandomEnemyType(waveNumber);
             const enemy = this.createEnemy(enemyType, waveNumber, spawnPoint, assignedDefensor);
             enemies.push(enemy);
             
-            console.log(`👾 ${enemyType} creado en ${spawnPoint.side} (${spawnPoint.x}, ${spawnPoint.y}) para ${assignedDefensor}`);
+            console.log(`👾 ${enemyType} en ${spawnPoint.side} para ${assignedDefensor}`);
         }
         
-        // MEJORA: Informe de distribución por lados
-        this.logSpawnDistribution(enemies);
+        // MEJORA: Informe de distribución balanceada
+        this.logBalancedDistribution(defensorCount, spawnPoints);
         
         return enemies;
     }
 
-    // MEJORA: Función para mostrar distribución de spawns por lados
-    logSpawnDistribution(enemies) {
-        const sideCount = {
-            left: 0,
-            top: 0,
-            right: 0,
-            bottom: 0
+    // NUEVO: Obtener punto de spawn óptimo basado en el defensor objetivo
+    getOptimalSpawnPoint(spawnPoints, defensorName) {
+        // Mapear defensores a lados preferidos
+        const defensorPreferredSides = {
+            'Confidencialidad': ['top', 'left'],    // Arriba-izquierda
+            'Integridad': ['top', 'bottom'],        // Centro
+            'Disponibilidad': ['top', 'right']      // Arriba-derecha
         };
         
-        enemies.forEach(enemy => {
-            if (enemy.spawnSide) {
-                sideCount[enemy.spawnSide]++;
-            }
-        });
+        const preferredSides = defensorPreferredSides[defensorName] || ['top'];
         
-        console.log(`📊 Distribución de spawns: Izquierda=${sideCount.left}, Superior=${sideCount.top}, Derecha=${sideCount.right}, Inferior=${sideCount.bottom}`);
+        // Filtrar puntos de spawn que estén en lados preferidos
+        const preferredSpawnPoints = spawnPoints.filter(point => 
+            preferredSides.includes(point.side)
+        );
+        
+        // Si hay puntos preferidos disponibles, usar uno aleatorio de ellos
+        if (preferredSpawnPoints.length > 0) {
+            return preferredSpawnPoints[Math.floor(Math.random() * preferredSpawnPoints.length)];
+        }
+        
+        // Fallback: cualquier punto de spawn
+        return spawnPoints[Math.floor(Math.random() * spawnPoints.length)];
+    }
+
+    // NUEVO: Log de distribución balanceada
+    logBalancedDistribution(defensorCount, spawnPoints) {
+        console.log(`📊 Distribución balanceada de enemigos:`);
+        console.log(`   Confidencialidad: ${defensorCount.Confidencialidad} enemigos`);
+        console.log(`   Integridad: ${defensorCount.Integridad} enemigos`);
+        console.log(`   Disponibilidad: ${defensorCount.Disponibilidad} enemigos`);
+        
+        // Contar spawn points por lado
+        const sideCount = {
+            left: spawnPoints.filter(p => p.side === 'left').length,
+            top: spawnPoints.filter(p => p.side === 'top').length,
+            right: spawnPoints.filter(p => p.side === 'right').length,
+            bottom: spawnPoints.filter(p => p.side === 'bottom').length
+        };
+        
+        console.log(`📍 Puntos de spawn: Izq=${sideCount.left}, Sup=${sideCount.top}, Der=${sideCount.right}, Inf=${sideCount.bottom}`);
     }
 
     selectRandomEnemyType(waveNumber) {
@@ -226,7 +289,7 @@ class EnemyManager {
             score: config.score,
             description: config.description,
             assignedDefensor: assignedDefensor,
-            spawnSide: spawnPoint.side // MEJORA: Guardar lado de spawn para tracking
+            spawnSide: spawnPoint.side
         });
         
         return enemy;
@@ -248,7 +311,7 @@ class Enemy {
         this.score = config.score;
         this.description = config.description;
         this.assignedDefensor = config.assignedDefensor;
-        this.spawnSide = config.spawnSide; // MEJORA: Lado donde apareció
+        this.spawnSide = config.spawnSide;
         
         // Estado del enemigo
         this.targetDefensor = null;
@@ -260,17 +323,20 @@ class Enemy {
         this.hitEffectTimer = 0;
         this.slowEffectTimer = 0;
         this.originalSpeed = config.speed;
+        
+        // NUEVO: Forzar objetivo asignado
+        this.forceAssignedTarget = true;
     }
 
     update(deltaTime, defensores) {
-        // Si tiene defensor asignado, usarlo como objetivo
+        // NUEVO: Siempre usar el defensor asignado si está disponible
         if (this.assignedDefensor && !this.targetDefensor) {
             this.targetDefensor = defensores[this.assignedDefensor];
         }
         
-        // Buscar defensor objetivo si no tiene
-        if (!this.targetDefensor || this.targetDefensor.salud <= 0) {
-            this.findTargetDefensor(defensores);
+        // NUEVO: Si el defensor asignado murió, buscar otro
+        if (this.targetDefensor && this.targetDefensor.salud <= 0) {
+            this.findBackupTarget(defensores);
         }
         
         // Aplicar efectos temporales
@@ -287,45 +353,38 @@ class Enemy {
         }
     }
 
-    findTargetDefensor(defensores) {
+    // NUEVO: Buscar objetivo de respaldo cuando el asignado muere
+    findBackupTarget(defensores) {
         const defensoresVivos = Object.values(defensores).filter(d => d.salud > 0);
         if (defensoresVivos.length === 0) return;
         
-        // MEJORA: Comportamiento inteligente basado en posición de spawn
-        if (this.spawnSide) {
-            // Priorizar defensor más cercano al lado de spawn
-            let closestDefensor = defensoresVivos[0];
-            let minDistance = Infinity;
-            
-            defensoresVivos.forEach(defensor => {
-                const distance = this.calculateDistanceToDefensor(defensor);
-                if (distance < minDistance) {
-                    minDistance = distance;
-                    closestDefensor = defensor;
-                }
-            });
-            
-            this.targetDefensor = closestDefensor;
-            return;
-        }
+        // Priorizar defensor más cercano
+        let closestDefensor = defensoresVivos[0];
+        let minDistance = this.calculateDistanceToDefensor(closestDefensor);
         
-        // Comportamientos especiales según tipo (mantenido)
-        switch (this.type) {
-            case 'ddos':
-                this.targetDefensor = defensoresVivos.find(d => d.nombre === "Disponibilidad") || defensoresVivos[0];
-                break;
-            case 'phishing':
-                this.targetDefensor = defensoresVivos.find(d => d.nombre === "Confidencialidad") || defensoresVivos[0];
-                break;
-            case 'ransomware':
-                this.targetDefensor = defensoresVivos.find(d => d.nombre === "Integridad") || defensoresVivos[0];
-                break;
-            default:
-                this.targetDefensor = defensoresVivos[Math.floor(Math.random() * defensoresVivos.length)];
+        defensoresVivos.forEach(defensor => {
+            const distance = this.calculateDistanceToDefensor(defensor);
+            if (distance < minDistance) {
+                minDistance = distance;
+                closestDefensor = defensor;
+            }
+        });
+        
+        this.targetDefensor = closestDefensor;
+        console.log(`🔄 ${this.name} cambió objetivo a ${closestDefensor.nombre}`);
+    }
+
+    // MODIFICADO: Ya no busca objetivo aleatorio, usa el asignado
+    findTargetDefensor(defensores) {
+        // Solo buscar nuevo objetivo si no hay uno asignado
+        if (!this.assignedDefensor) {
+            const defensoresVivos = Object.values(defensores).filter(d => d.salud > 0);
+            if (defensoresVivos.length === 0) return;
+            
+            this.targetDefensor = defensoresVivos[Math.floor(Math.random() * defensoresVivos.length)];
         }
     }
 
-    // MEJORA: Calcular distancia considerando posición actual
     calculateDistanceToDefensor(defensor) {
         const dx = defensor.posicion.x - this.x;
         const dy = defensor.posicion.y - this.y;
@@ -355,18 +414,14 @@ class Enemy {
 
     prepareAttack() {
         this.isAttacking = true;
-        console.log(`⚔️ ${this.name} (desde ${this.spawnSide}) prepara ataque contra ${this.targetDefensor.nombre}`);
-        
-        // El ataque se completa en el próximo frame, activando la pregunta
+        console.log(`⚔️ ${this.name} (desde ${this.spawnSide}) ataca a ${this.targetDefensor.nombre}`);
     }
 
     updateEffects(deltaTime) {
-        // Efecto de golpe
         if (this.hitEffectTimer > 0) {
             this.hitEffectTimer -= deltaTime;
         }
         
-        // Efecto de ralentización
         if (this.slowEffectTimer > 0) {
             this.slowEffectTimer -= deltaTime;
             if (this.slowEffectTimer <= 0) {
@@ -378,7 +433,6 @@ class Enemy {
     takeDamage(amount) {
         this.health -= amount;
         this.hitEffectTimer = 0.2;
-        
         return this.health <= 0;
     }
 
@@ -397,38 +451,29 @@ class Enemy {
     draw(ctx) {
         ctx.save();
         
-        // Efecto de flash cuando es golpeado
         if (this.hitEffectTimer > 0) {
             ctx.fillStyle = '#ffffff';
         } else if (this.slowEffectTimer > 0) {
-            // Efecto azul cuando está ralentizado
             ctx.fillStyle = '#60a5fa';
         } else {
             ctx.fillStyle = this.color;
         }
         
-        // Cuerpo principal del enemigo
         ctx.beginPath();
         ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
         ctx.fill();
         
-        // Detalles según tipo de enemigo
         this.drawEnemyDetails(ctx);
-        
-        // Barra de salud
         this.drawHealthBar(ctx);
         
-        // Indicador de ataque
         if (this.isAttacking) {
             this.drawAttackIndicator(ctx);
         }
         
-        // Indicador de defensor asignado
         if (this.assignedDefensor) {
             this.drawAssignedDefensorIndicator(ctx);
         }
         
-        // MEJORA: Indicador visual del lado de spawn
         this.drawSpawnSideIndicator(ctx);
         
         ctx.restore();
@@ -440,7 +485,6 @@ class Enemy {
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
         
-        // Iconos según tipo
         const icons = {
             virus: '⚡',
             trojan: '🎁',
@@ -451,7 +495,6 @@ class Enemy {
         
         ctx.fillText(icons[this.type] || '❓', this.x, this.y);
         
-        // Nombre del enemigo (pequeño)
         ctx.font = '9px Arial';
         ctx.fillText(this.name, this.x, this.y + this.radius + 10);
     }
@@ -463,11 +506,9 @@ class Enemy {
         const barX = this.x - this.radius;
         const barY = this.y - this.radius - 8;
         
-        // Fondo de la barra
         ctx.fillStyle = '#374151';
         ctx.fillRect(barX, barY, barWidth, barHeight);
         
-        // Salud actual
         if (healthPercent > 0.6) {
             ctx.fillStyle = '#10b981';
         } else if (healthPercent > 0.3) {
@@ -480,7 +521,6 @@ class Enemy {
     }
 
     drawAttackIndicator(ctx) {
-        // Círculo pulsante alrededor del enemigo cuando ataca
         ctx.strokeStyle = '#ef4444';
         ctx.lineWidth = 2;
         ctx.setLineDash([5, 3]);
@@ -494,7 +534,6 @@ class Enemy {
     }
 
     drawAssignedDefensorIndicator(ctx) {
-        // Indicador visual del defensor asignado
         const colors = {
             'Confidencialidad': '#3498db',
             'Integridad': '#2ecc71', 
@@ -503,13 +542,11 @@ class Enemy {
         
         const color = colors[this.assignedDefensor] || '#ffffff';
         
-        // Pequeño círculo de color en la parte superior
         ctx.fillStyle = color;
         ctx.beginPath();
         ctx.arc(this.x, this.y - this.radius - 5, 3, 0, Math.PI * 2);
         ctx.fill();
         
-        // Letra inicial del defensor
         ctx.fillStyle = '#ffffff';
         ctx.font = '8px Arial';
         ctx.textAlign = 'center';
@@ -518,18 +555,16 @@ class Enemy {
         ctx.fillText(initial, this.x, this.y - this.radius - 5);
     }
 
-    // MEJORA: Indicador visual del lado de spawn
     drawSpawnSideIndicator(ctx) {
         const colors = {
-            'left': '#3b82f6',    // Azul para izquierda
-            'top': '#10b981',     // Verde para superior  
-            'right': '#f59e0b',   // Amarillo para derecha
-            'bottom': '#ef4444'   // Rojo para inferior
+            'left': '#3b82f6',
+            'top': '#10b981',  
+            'right': '#f59e0b',
+            'bottom': '#ef4444'
         };
         
         const color = colors[this.spawnSide] || '#9ca3af';
         
-        // Pequeño indicador triangular en la base
         ctx.fillStyle = color;
         ctx.beginPath();
         const indicatorSize = 4;
@@ -551,7 +586,7 @@ class Enemy {
             description: this.description,
             score: this.score,
             assignedDefensor: this.assignedDefensor,
-            spawnSide: this.spawnSide // MEJORA: Incluir información de spawn
+            spawnSide: this.spawnSide
         };
     }
 }
