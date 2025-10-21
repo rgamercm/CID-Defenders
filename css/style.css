@@ -1231,3 +1231,42 @@ button:focus {
 .health-dot.healthy { background: #10b981; }
 .health-dot.warning { background: #f59e0b; }
 .health-dot.critical { background: #ef4444; }
+
+/* ===== ESTILOS PARA DEFENSORES MUERTOS ===== */
+
+.defensor-health.dead .health-fill {
+    background: #6b7280 !important;
+}
+
+.defensor-health.dead .defensor-name {
+    color: #ef4444 !important;
+    text-decoration: line-through;
+}
+
+.defensor-health.dead .health-numbers {
+    color: #ef4444 !important;
+    font-weight: bold;
+}
+
+.defensor-health.dead .health-percent {
+    color: #ef4444 !important;
+}
+
+/* Animación para defensor muerto */
+.defensor-dead {
+    animation: defensorDeadPulse 1s ease-in-out;
+}
+
+@keyframes defensorDeadPulse {
+    0%, 100% { 
+        background-color: transparent; 
+    }
+    50% { 
+        background-color: rgba(239, 68, 68, 0.3); 
+    }
+}
+
+.dead-name {
+    color: #ef4444 !important;
+    text-decoration: line-through;
+}

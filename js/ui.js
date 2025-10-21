@@ -148,16 +148,17 @@ class UIManager {
 
         Object.values(defensores).forEach(defensor => {
             const healthPercent = (defensor.salud / defensor.maxSalud) * 100;
-            const healthStatus = healthPercent > 60 ? 'healthy' : healthPercent > 30 ? 'warning' : 'critical';
+            const isMuerto = defensor.salud <= 0;
+            const healthStatus = isMuerto ? 'dead' : healthPercent > 60 ? 'healthy' : healthPercent > 30 ? 'warning' : 'critical';
             
             healthHTML += `
                 <div class="defensor-health ${healthStatus}">
-                    <div class="defensor-name">${defensor.nombre}</div>
+                    <div class="defensor-name ${isMuerto ? 'dead-name' : ''}">${defensor.nombre} ${isMuerto ? '💀' : ''}</div>
                     <div class="health-bar">
-                        <div class="health-fill" style="width: ${healthPercent}%"></div>
+                        <div class="health-fill" style="width: ${isMuerto ? 0 : healthPercent}%"></div>
                     </div>
-                    <div class="health-numbers">${defensor.salud}/${defensor.maxSalud}</div>
-                    <div class="health-percent">${Math.round(healthPercent)}%</div>
+                    <div class="health-numbers">${isMuerto ? 'COMPROMETIDO' : `${defensor.salud}/${defensor.maxSalud}`}</div>
+                    <div class="health-percent">${isMuerto ? '0%' : Math.round(healthPercent)}%</div>
                 </div>
             `;
         });
@@ -346,13 +347,23 @@ class UIManager {
             if (pilarElement) {
                 const bar = pilarElement.querySelector('.pilar-bar');
                 const healthText = pilarElement.querySelector('.health-text');
+                const defensorName = pilarElement.querySelector('span');
                 
                 if (bar) {
                     const percent = (defensor.salud / defensor.maxSalud) * 100;
-                    bar.style.width = `${percent}%`;
+                    const isMuerto = defensor.salud <= 0;
                     
-                    // Colores según porcentaje de salud
-                    if (percent > 60) {
+                    bar.style.width = `${isMuerto ? 0 : percent}%`;
+                    
+                    // Colores según porcentaje de salud o estado muerto
+                    if (isMuerto) {
+                        bar.style.background = '#6b7280';
+                        bar.style.opacity = '0.5';
+                        if (defensorName) {
+                            defensorName.style.color = '#ef4444';
+                            defensorName.style.textDecoration = 'line-through';
+                        }
+                    } else if (percent > 60) {
                         bar.style.background = '#10b981';
                     } else if (percent > 30) {
                         bar.style.background = '#f59e0b';
@@ -376,7 +387,15 @@ class UIManager {
                 // Actualizar texto de salud
                 const healthTextElement = pilarElement.querySelector('.health-text');
                 if (healthTextElement) {
-                    healthTextElement.textContent = `${defensor.salud}/${defensor.maxSalud}`;
+                    if (defensor.salud <= 0) {
+                        healthTextElement.textContent = 'COMPROMETIDO';
+                        healthTextElement.style.color = '#ef4444';
+                        healthTextElement.style.fontWeight = 'bold';
+                    } else {
+                        healthTextElement.textContent = `${defensor.salud}/${defensor.maxSalud}`;
+                        healthTextElement.style.color = '#d1d5db';
+                        healthTextElement.style.fontWeight = 'normal';
+                    }
                 }
             }
         });
@@ -427,6 +446,9 @@ class UIManager {
         // NUEVO: Escuchar eventos de daño a defensores
         document.addEventListener('defensorDamaged', (e) => this.onDefensorDamaged(e.detail));
         document.addEventListener('defensorHealed', (e) => this.onDefensorHealed(e.detail));
+        
+        // NUEVO: Escuchar evento cuando un defensor muere
+        document.addEventListener('defensorMuerto', (e) => this.onDefensorMuerto(e.detail));
     }
 
     onTowerUnlocked(towerType) {
@@ -456,6 +478,10 @@ class UIManager {
         
         // Efecto visual en la barra de salud
         this.animateHealthBar(defensorName, currentHealth, maxHealth);
+        
+        // Actualizar UI inmediatamente
+        this.updateHealthInfo();
+        this.updateDefensorHealthBars();
     }
 
     // NUEVO: Manejar curación de defensores
@@ -465,6 +491,23 @@ class UIManager {
         
         // Efecto visual en la barra de salud
         this.animateHealthBar(defensorName, currentHealth, maxHealth, true);
+        
+        // Actualizar UI inmediatamente
+        this.updateHealthInfo();
+        this.updateDefensorHealthBars();
+    }
+
+    // NUEVO: Manejar cuando un defensor muere
+    onDefensorMuerto(detail) {
+        const { defensorName } = detail;
+        this.showMessage(`💀 ${defensorName} ha sido comprometido!`, 'error');
+        
+        // Actualizar UI inmediatamente
+        this.updateHealthInfo();
+        this.updateDefensorHealthBars();
+        
+        // Efecto visual especial para defensor muerto
+        this.animateDefensorMuerto(defensorName);
     }
 
     // NUEVO: Animación de barras de salud
@@ -481,6 +524,20 @@ class UIManager {
                     bar.classList.remove('health-heal', 'health-damage');
                 }, 600);
             }
+        }
+    }
+
+    // NUEVO: Animación especial para defensor muerto
+    animateDefensorMuerto(defensorName) {
+        const defensorKey = this.getDefensorKey(defensorName);
+        const pilarElement = document.getElementById(`pilar-${defensorKey}`);
+        
+        if (pilarElement) {
+            // Efecto de parpadeo rojo
+            pilarElement.classList.add('defensor-dead');
+            setTimeout(() => {
+                pilarElement.classList.remove('defensor-dead');
+            }, 1000);
         }
     }
 

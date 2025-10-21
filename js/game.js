@@ -1100,10 +1100,33 @@ class CIDDefenderGame {
             if (this.ataqueActual.defensor.salud <= 0) {
                 this.ataqueActual.defensor.salud = 0;
                 this.showScreenMessage(`${this.ataqueActual.defensor.nombre} ha sido comprometido!`, 'error', 'top');
+                
+                // NUEVO: Verificar Game Over inmediatamente cuando un defensor muere
+                this.checkDefensorGameOver();
             }
         }
         
         this.showScreenMessage('¡Enemigo ataca!', 'warning', 'bottom');
+    }
+
+    // NUEVO: Función para verificar Game Over cuando un defensor muere
+    checkDefensorGameOver() {
+        const defensoresVivos = Object.values(this.defensores).filter(d => d.salud > 0).length;
+        
+        // MODIFICACIÓN: Game Over si al menos 1 defensor muere (en lugar de todos)
+        if (defensoresVivos < 3) {
+            console.log(`💀 GAME OVER: ${3 - defensoresVivos} defensor(es) comprometido(s)`);
+            
+            // Mostrar mensaje específico sobre qué defensores fueron comprometidos
+            const defensoresMuertos = Object.values(this.defensores).filter(d => d.salud <= 0);
+            const nombresMuertos = defensoresMuertos.map(d => d.nombre).join(', ');
+            this.showScreenMessage(`¡${nombresMuertos} comprometidos!`, 'error', 'center');
+            
+            // Pequeña pausa antes del Game Over para mostrar el mensaje
+            setTimeout(() => {
+                this.setGameState(GAME_STATES.GAME_OVER);
+            }, 1500);
+        }
     }
 
     showFinalStats() {
@@ -1312,7 +1335,11 @@ class CIDDefenderGame {
 
     drawDefensores() {
         Object.values(this.defensores).forEach(defensor => {
-            if (defensor.salud <= 0) return;
+            if (defensor.salud <= 0) {
+                // NUEVO: Mostrar defensor muerto con efecto visual
+                this.drawDefensorMuerto(defensor);
+                return;
+            }
             
             // Cuerpo del defensor
             this.ctx.fillStyle = defensor.color;
@@ -1335,6 +1362,31 @@ class CIDDefenderGame {
             this.ctx.font = '10px Arial';
             this.ctx.fillText(`${defensor.salud}/${defensor.maxSalud}`, defensor.posicion.x, defensor.posicion.y + 50);
         });
+    }
+
+    // NUEVO: Dibujar defensor muerto
+    drawDefensorMuerto(defensor) {
+        // Cuerpo del defensor (gris y tachado)
+        this.ctx.fillStyle = '#6b7280';
+        this.ctx.beginPath();
+        this.ctx.arc(defensor.posicion.x, defensor.posicion.y, 25, 0, Math.PI * 2);
+        this.ctx.fill();
+        
+        // Cruz roja sobre el defensor
+        this.ctx.strokeStyle = '#ef4444';
+        this.ctx.lineWidth = 3;
+        this.ctx.beginPath();
+        this.ctx.moveTo(defensor.posicion.x - 15, defensor.posicion.y - 15);
+        this.ctx.lineTo(defensor.posicion.x + 15, defensor.posicion.y + 15);
+        this.ctx.moveTo(defensor.posicion.x + 15, defensor.posicion.y - 15);
+        this.ctx.lineTo(defensor.posicion.x - 15, defensor.posicion.y + 15);
+        this.ctx.stroke();
+        
+        // Texto "COMPROMETIDO"
+        this.ctx.fillStyle = '#ef4444';
+        this.ctx.font = 'bold 12px Arial';
+        this.ctx.textAlign = 'center';
+        this.ctx.fillText('COMPROMETIDO', defensor.posicion.x, defensor.posicion.y + 35);
     }
 
     drawEnemies() {
@@ -1556,9 +1608,10 @@ class CIDDefenderGame {
     // === CONDICIONES DE JUEGO ===
 
     checkGameConditions() {
-        // Verificar si todos los defensores están derrotados
+        // NUEVO: Verificar si al menos 1 defensor está derrotado (Game Over)
         const defensoresVivos = Object.values(this.defensores).filter(d => d.salud > 0).length;
-        if (defensoresVivos === 0) {
+        if (defensoresVivos < 3) {
+            console.log(`💀 GAME OVER: ${3 - defensoresVivos} defensor(es) comprometido(s)`);
             this.setGameState(GAME_STATES.GAME_OVER);
             return;
         }
@@ -1587,6 +1640,12 @@ class CIDDefenderGame {
                     const percent = (defensor.salud / defensor.maxSalud) * 100; // NUEVO: Usar salud máxima
                     bar.style.width = `${percent}%`;
                     bar.style.background = percent > 50 ? '#10b981' : percent > 25 ? '#f59e0b' : '#ef4444';
+                    
+                    // NUEVO: Efecto visual cuando el defensor está muerto
+                    if (defensor.salud <= 0) {
+                        bar.style.background = '#6b7280';
+                        bar.style.opacity = '0.5';
+                    }
                 }
             }
         });
