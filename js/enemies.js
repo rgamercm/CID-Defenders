@@ -72,26 +72,66 @@ class EnemyManager {
         };
     }
 
+    // NUEVO: Sistema de spawn points distribuidos
+    getSpawnPositions(waveNumber) {
+        // Múltiples puntos de spawn distribuidos estratégicamente
+        const spawnPoints = [
+            // Lado izquierdo - arriba, centro, abajo
+            { x: -30, y: 80 }, 
+            { x: -30, y: 250 }, 
+            { x: -30, y: 420 },
+            
+            // Lado superior - izquierda, centro, derecha
+            { x: 150, y: -30 }, 
+            { x: 400, y: -30 }, 
+            { x: 650, y: -30 },
+            
+            // Lado derecho - arriba, centro, abajo
+            { x: 830, y: 80 }, 
+            { x: 830, y: 250 }, 
+            { x: 830, y: 420 },
+            
+            // Lado inferior - izquierda, centro, derecha
+            { x: 150, y: 530 }, 
+            { x: 400, y: 530 }, 
+            { x: 650, y: 530 }
+        ];
+        
+        // En oleadas altas, usar más puntos de spawn
+        if (waveNumber > 3) {
+            spawnPoints.push(
+                { x: -30, y: 150 }, { x: -30, y: 350 }, // Izquierda adicional
+                { x: 830, y: 150 }, { x: 830, y: 350 }  // Derecha adicional
+            );
+        }
+        
+        return spawnPoints;
+    }
+
     spawnWave(waveNumber) {
         const enemies = [];
         
-        // NUEVO SISTEMA: 1 enemigo por defensor en oleada 1, 2 en oleada 2, etc.
-        // Máximo 3 enemigos por defensor (oleadas 3-5)
+        // NUEVO SISTEMA: Enemigos distribuidos proporcionalmente
         const enemiesPerDefensor = Math.min(waveNumber, 3);
-        const totalEnemies = enemiesPerDefensor * 3; // 3 defensores (C, I, D)
+        const totalEnemies = enemiesPerDefensor * 3;
+        const spawnPoints = this.getSpawnPositions(waveNumber);
         
-        console.log(`🎯 Generando oleada ${waveNumber}: ${enemiesPerDefensor} enemigos por defensor (${totalEnemies} total)`);
+        console.log(`🎯 Generando oleada ${waveNumber}: ${enemiesPerDefensor} enemigos por defensor (${totalEnemies} total) desde ${spawnPoints.length} puntos de spawn`);
         
         // Nombres de los defensores en orden
         const defensorNames = ["Confidencialidad", "Integridad", "Disponibilidad"];
         
         for (let i = 0; i < totalEnemies; i++) {
-            // Asignar defensor específico a cada enemigo
-            const defensorIndex = i % 3; // 0=C, 1=I, 2=D
+            // Asignar defensor específico a cada enemigo (distribución circular)
+            const defensorIndex = i % 3;
             const assignedDefensor = defensorNames[defensorIndex];
             
+            // NUEVO: Distribuir enemigos entre diferentes puntos de spawn
+            const spawnIndex = i % spawnPoints.length;
+            const spawnPoint = spawnPoints[spawnIndex];
+            
             const enemyType = this.selectRandomEnemyType(waveNumber);
-            const enemy = this.createEnemy(enemyType, waveNumber, i, assignedDefensor);
+            const enemy = this.createEnemy(enemyType, waveNumber, spawnPoint, assignedDefensor);
             enemies.push(enemy);
         }
         
@@ -130,7 +170,7 @@ class EnemyManager {
         return items[items.length - 1];
     }
 
-    createEnemy(type, waveNumber, index, assignedDefensor = null) {
+    createEnemy(type, waveNumber, spawnPoint, assignedDefensor = null) {
         const config = this.enemyConfigs[type];
         
         // Aumentar dificultad según oleada
@@ -139,8 +179,8 @@ class EnemyManager {
         const enemy = new Enemy({
             type: type,
             name: config.name,
-            x: this.getSpawnPosition(index).x,
-            y: this.getSpawnPosition(index).y,
+            x: spawnPoint.x,
+            y: spawnPoint.y,
             health: Math.floor(config.health * waveMultiplier),
             maxHealth: Math.floor(config.health * waveMultiplier),
             speed: config.speed,
@@ -152,23 +192,8 @@ class EnemyManager {
             assignedDefensor: assignedDefensor // NUEVO: Defensor asignado
         });
         
+        console.log(`👾 Enemigo ${type} creado en (${spawnPoint.x}, ${spawnPoint.y}) para ${assignedDefensor}`);
         return enemy;
-    }
-
-    getSpawnPosition(index) {
-        const spawnPoints = [
-            { x: -40, y: 100 },
-            { x: -40, y: 200 },
-            { x: -40, y: 300 },
-            { x: -40, y: 150 },
-            { x: -40, y: 250 },
-            { x: -40, y: 350 },
-            { x: -40, y: 80 },
-            { x: -40, y: 180 },
-            { x: -40, y: 280 }
-        ];
-        
-        return spawnPoints[index % spawnPoints.length];
     }
 }
 
@@ -192,6 +217,7 @@ class Enemy {
         this.targetDefensor = null;
         this.isAttacking = false;
         this.attackCooldown = 0;
+        this.originalDamage = config.damage; // Guardar daño original para efectos
         
         // Efectos visuales
         this.hitEffectTimer = 0;
@@ -324,7 +350,7 @@ class Enemy {
     blockAttacks(duration) {
         this.damage = 0;
         setTimeout(() => {
-            this.damage = this.originalDamage || 15;
+            this.damage = this.originalDamage;
             console.log(`🛡️ ${this.name} puede atacar nuevamente`);
         }, duration * 1000);
         console.log(`🛡️ ${this.name} bloqueado por ${duration}s`);

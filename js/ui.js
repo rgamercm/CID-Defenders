@@ -1,6 +1,6 @@
 /**
  * SISTEMA DE INTERFAZ RENOVADO - CID DEFENDER
- * UI para la nueva mecánica de juego
+ * UI para la nueva mecánica de juego con balance de vida
  */
 
 class UIManager {
@@ -9,6 +9,7 @@ class UIManager {
         this.activeModals = new Set();
         this.selectedTower = null;
         this.towerPanelVisible = true;
+        this.statsPanelVisible = true;
     }
 
     init() {
@@ -17,6 +18,7 @@ class UIManager {
         this.setupEventListeners();
         this.createTowerSelectionPanel();
         this.createTowerInfoPanel();
+        this.createHealthInfoPanel(); // NUEVO: Panel de información de salud
         this.setupGameEventHandlers();
         
         this.isInitialized = true;
@@ -40,6 +42,7 @@ class UIManager {
                 case 'Escape': this.deselectTower(); break;
                 case ' ': this.toggleTowerPanel(); break;
                 case 's': this.toggleStatsPanel(); break;
+                case 'h': this.toggleHealthPanel(); break; // NUEVO: Alternar panel de salud
             }
         });
     }
@@ -79,6 +82,19 @@ class UIManager {
         this.updateTowerButtons();
     }
 
+    // NUEVO: Panel de información de salud de defensores
+    createHealthInfoPanel() {
+        let healthPanel = document.getElementById('healthInfoPanel');
+        if (!healthPanel) {
+            healthPanel = document.createElement('div');
+            healthPanel.id = 'healthInfoPanel';
+            healthPanel.className = 'health-info-panel';
+            document.getElementById('gameScreen').appendChild(healthPanel);
+        }
+
+        this.updateHealthInfo();
+    }
+
     updateTowerButtons() {
         const towerPanel = document.getElementById('towerSelectionPanel');
         if (!towerPanel || !towerManager) return;
@@ -115,14 +131,39 @@ class UIManager {
         console.log('🔄 Botones de torres actualizados');
     }
 
-    createTowerInfoPanel() {
-        let infoPanel = document.getElementById('towerInfoPanel');
-        if (!infoPanel) {
-            infoPanel = document.createElement('div');
-            infoPanel.id = 'towerInfoPanel';
-            infoPanel.className = 'tower-info-panel hidden';
-            document.getElementById('gameScreen').appendChild(infoPanel);
-        }
+    // NUEVO: Actualizar información de salud de defensores
+    updateHealthInfo() {
+        const healthPanel = document.getElementById('healthInfoPanel');
+        if (!healthPanel || !window.game) return;
+
+        const { defensores, currentWave } = window.game;
+        
+        let healthHTML = `
+            <div class="health-header">
+                <h4>💚 Estado Defensores</h4>
+                <small>Oleada ${currentWave}</small>
+            </div>
+            <div class="health-stats">
+        `;
+
+        Object.values(defensores).forEach(defensor => {
+            const healthPercent = (defensor.salud / defensor.maxSalud) * 100;
+            const healthStatus = healthPercent > 60 ? 'healthy' : healthPercent > 30 ? 'warning' : 'critical';
+            
+            healthHTML += `
+                <div class="defensor-health ${healthStatus}">
+                    <div class="defensor-name">${defensor.nombre}</div>
+                    <div class="health-bar">
+                        <div class="health-fill" style="width: ${healthPercent}%"></div>
+                    </div>
+                    <div class="health-numbers">${defensor.salud}/${defensor.maxSalud}</div>
+                    <div class="health-percent">${Math.round(healthPercent)}%</div>
+                </div>
+            `;
+        });
+
+        healthHTML += `</div>`;
+        healthPanel.innerHTML = healthHTML;
     }
 
     selectTower(towerType) {
@@ -264,6 +305,8 @@ class UIManager {
         this.updateScoreDisplay();
         this.updateWaveProgress();
         this.updateStatsDisplay();
+        this.updateHealthInfo(); // NUEVO: Actualizar información de salud
+        this.updateDefensorHealthBars(); // NUEVO: Actualizar barras de salud en UI principal
     }
 
     updateScoreDisplay() {
@@ -288,6 +331,55 @@ class UIManager {
                 setTimeout(() => waveElement.classList.remove('score-update'), 1000);
             }
         }
+    }
+
+    // NUEVO: Actualizar barras de salud de defensores en la UI principal
+    updateDefensorHealthBars() {
+        if (!window.game) return;
+
+        const { defensores } = window.game;
+        
+        Object.keys(defensores).forEach(key => {
+            const defensor = defensores[key];
+            const pilarElement = document.getElementById(`pilar-${key.charAt(0).toLowerCase()}`);
+            
+            if (pilarElement) {
+                const bar = pilarElement.querySelector('.pilar-bar');
+                const healthText = pilarElement.querySelector('.health-text');
+                
+                if (bar) {
+                    const percent = (defensor.salud / defensor.maxSalud) * 100;
+                    bar.style.width = `${percent}%`;
+                    
+                    // Colores según porcentaje de salud
+                    if (percent > 60) {
+                        bar.style.background = '#10b981';
+                    } else if (percent > 30) {
+                        bar.style.background = '#f59e0b';
+                    } else {
+                        bar.style.background = '#ef4444';
+                    }
+                }
+                
+                // NUEVO: Agregar texto de salud si no existe
+                if (!healthText && pilarElement) {
+                    const healthElement = document.createElement('div');
+                    healthElement.className = 'health-text';
+                    healthElement.style.cssText = `
+                        font-size: 10px;
+                        color: #d1d5db;
+                        margin-top: 2px;
+                    `;
+                    pilarElement.appendChild(healthElement);
+                }
+                
+                // Actualizar texto de salud
+                const healthTextElement = pilarElement.querySelector('.health-text');
+                if (healthTextElement) {
+                    healthTextElement.textContent = `${defensor.salud}/${defensor.maxSalud}`;
+                }
+            }
+        });
     }
 
     updateStatsDisplay() {
@@ -329,9 +421,12 @@ class UIManager {
         document.addEventListener('gameWaveUpdate', () => this.updateWaveProgress());
         document.addEventListener('gameStatsUpdate', () => this.updateStatsDisplay());
         document.addEventListener('towerUnlocked', (e) => this.onTowerUnlocked(e.detail));
-        
-        // NUEVO: Evento para notificar nueva oleada
+        document.addEventListener('defensorHealthUpdate', () => this.updateHealthInfo()); // NUEVO
         document.addEventListener('gameNewWave', (e) => this.onNewWave(e.detail));
+        
+        // NUEVO: Escuchar eventos de daño a defensores
+        document.addEventListener('defensorDamaged', (e) => this.onDefensorDamaged(e.detail));
+        document.addEventListener('defensorHealed', (e) => this.onDefensorHealed(e.detail));
     }
 
     onTowerUnlocked(towerType) {
@@ -347,6 +442,56 @@ class UIManager {
             `¡Oleada ${waveInfo.waveNumber}! ${enemiesPerDefensor} enemigos por defensor`, 
             'warning'
         );
+        
+        // Mostrar información de curación si es oleada > 1
+        if (waveInfo.waveNumber > 1) {
+            this.showMessage('Defensores curados entre oleadas', 'info');
+        }
+    }
+
+    // NUEVO: Manejar daño a defensores
+    onDefensorDamaged(detail) {
+        const { defensorName, damage, currentHealth, maxHealth } = detail;
+        this.showMessage(`${defensorName} recibe ${damage} de daño`, 'error');
+        
+        // Efecto visual en la barra de salud
+        this.animateHealthBar(defensorName, currentHealth, maxHealth);
+    }
+
+    // NUEVO: Manejar curación de defensores
+    onDefensorHealed(detail) {
+        const { defensorName, healAmount, currentHealth, maxHealth } = detail;
+        this.showMessage(`${defensorName} curado +${healAmount}`, 'success');
+        
+        // Efecto visual en la barra de salud
+        this.animateHealthBar(defensorName, currentHealth, maxHealth, true);
+    }
+
+    // NUEVO: Animación de barras de salud
+    animateHealthBar(defensorName, currentHealth, maxHealth, isHeal = false) {
+        const defensorKey = this.getDefensorKey(defensorName);
+        const pilarElement = document.getElementById(`pilar-${defensorKey}`);
+        
+        if (pilarElement) {
+            const bar = pilarElement.querySelector('.pilar-bar');
+            if (bar) {
+                // Efecto de parpadeo
+                bar.classList.add(isHeal ? 'health-heal' : 'health-damage');
+                setTimeout(() => {
+                    bar.classList.remove('health-heal', 'health-damage');
+                }, 600);
+            }
+        }
+    }
+
+    // NUEVO: Obtener clave del defensor por nombre
+    getDefensorKey(defensorName) {
+        const mapping = {
+            'Confidencialidad': 'c',
+            'Integridad': 'i',
+            'Disponibilidad': 'd'
+        };
+        return mapping[defensorName] || 'c';
     }
 
     toggleTowerPanel() {
@@ -361,9 +506,19 @@ class UIManager {
         // Función para alternar visibilidad del panel de estadísticas
         const statsPanel = document.querySelector('.top-bar .stats');
         if (statsPanel) {
-            const isVisible = statsPanel.style.display !== 'none';
-            statsPanel.style.display = isVisible ? 'none' : 'block';
-            this.showMessage(isVisible ? 'Estadísticas ocultas' : 'Estadísticas visibles', 'info');
+            this.statsPanelVisible = !this.statsPanelVisible;
+            statsPanel.style.display = this.statsPanelVisible ? 'block' : 'none';
+            this.showMessage(this.statsPanelVisible ? 'Estadísticas visibles' : 'Estadísticas ocultas', 'info');
+        }
+    }
+
+    // NUEVO: Alternar panel de información de salud
+    toggleHealthPanel() {
+        const healthPanel = document.getElementById('healthInfoPanel');
+        if (healthPanel) {
+            const isVisible = healthPanel.style.display !== 'none';
+            healthPanel.style.display = isVisible ? 'none' : 'block';
+            this.showMessage(isVisible ? 'Panel de salud oculto' : 'Panel de salud visible', 'info');
         }
     }
 

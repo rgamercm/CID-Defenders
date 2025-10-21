@@ -13,23 +13,26 @@ const GAME_STATES = {
     VICTORY: 'victory'
 };
 
-// Personajes defensores en forma de triángulo equilátero
+// NUEVO: Sistema de vida balanceada para defensores
 const DEFENSORES = {
     CONFIDENCIALIDAD: { 
         nombre: "Confidencialidad", 
         salud: 100, 
+        maxSalud: 100, // NUEVO: Salud máxima para cálculos
         color: '#3498db', 
         posicion: { x: 400, y: 150 }  // Vértice superior
     },
     INTEGRIDAD: { 
         nombre: "Integridad", 
         salud: 100, 
+        maxSalud: 100, // NUEVO: Salud máxima para cálculos
         color: '#2ecc71', 
         posicion: { x: 250, y: 350 }  // Vértice inferior izquierdo
     },
     DISPONIBILIDAD: { 
         nombre: "Disponibilidad", 
         salud: 100, 
+        maxSalud: 100, // NUEVO: Salud máxima para cálculos
         color: '#e74c3c', 
         posicion: { x: 550, y: 350 }  // Vértice inferior derecho
     }
@@ -319,6 +322,31 @@ class CIDDefenderGame {
         };
     }
 
+    // NUEVO: Sistema de vida balanceada para defensores
+    calculateDefensorHealth(waveNumber) {
+        // Vida base + bonus por oleada, con límite máximo
+        const baseHealth = 100;
+        const waveBonus = Math.min(waveNumber * 15, 75); // Máximo +75% (175 vida)
+        return baseHealth + waveBonus;
+    }
+
+    // NUEVO: Cálculo de daño balanceado según oleada
+    calculateBalancedDamage(baseDamage, waveNumber) {
+        const waveMultiplier = 1 + ((waveNumber - 1) * 0.12); // +12% por oleada
+        return Math.floor(baseDamage * waveMultiplier);
+    }
+
+    // NUEVO: Sistema de curación entre oleadas
+    healDefensoresBetweenWaves() {
+        Object.values(this.defensores).forEach(defensor => {
+            if (defensor.salud > 0) {
+                const healAmount = 20 + (this.currentWave * 2); // +20 base +2 por oleada
+                defensor.salud = Math.min(defensor.salud + healAmount, defensor.maxSalud);
+                console.log(`💚 ${defensor.nombre} curado +${healAmount} (${defensor.salud}/${defensor.maxSalud})`);
+            }
+        });
+    }
+
     showScreenMessage(text, type = 'info', position = 'center') {
         const messageId = this.messageIdCounter++;
         
@@ -575,8 +603,33 @@ class CIDDefenderGame {
             accuracy: 100
         };
         
-        // Reset defensores
-        this.defensores = JSON.parse(JSON.stringify(DEFENSORES));
+        // NUEVO: Reset defensores con vida balanceada según oleada inicial
+        const initialHealth = this.calculateDefensorHealth(1);
+        this.defensores = {
+            CONFIDENCIALIDAD: { 
+                nombre: "Confidencialidad", 
+                salud: initialHealth,
+                maxSalud: initialHealth,
+                color: '#3498db', 
+                posicion: { x: 400, y: 150 }
+            },
+            INTEGRIDAD: { 
+                nombre: "Integridad", 
+                salud: initialHealth,
+                maxSalud: initialHealth,
+                color: '#2ecc71', 
+                posicion: { x: 250, y: 350 }
+            },
+            DISPONIBILIDAD: { 
+                nombre: "Disponibilidad", 
+                salud: initialHealth,
+                maxSalud: initialHealth,
+                color: '#e74c3c', 
+                posicion: { x: 550, y: 350 }
+            }
+        };
+        
+        console.log(`💚 Defensores inicializados con ${initialHealth} de vida`);
         
         // Limpiar arrays
         this.enemies = [];
@@ -746,12 +799,16 @@ class CIDDefenderGame {
     }
 
     triggerAtaque(enemy, defensor) {
-        console.log(`⚔️ ${enemy.type} ataca a ${defensor.nombre}!`);
+        // NUEVO: Daño balanceado según oleada
+        const balancedDamage = this.calculateBalancedDamage(enemy.damage, this.currentWave);
+        
+        console.log(`⚔️ ${enemy.type} ataca a ${defensor.nombre}! Daño: ${balancedDamage} (base: ${enemy.damage})`);
         
         this.ataqueActual = {
             enemy: enemy,
             defensor: defensor,
-            damage: enemy.damage
+            damage: balancedDamage,
+            originalDamage: enemy.damage // Guardar para referencia
         };
         
         this.setGameState(GAME_STATES.QUESTION);
@@ -890,9 +947,14 @@ class CIDDefenderGame {
 
     // === SISTEMA DE ATAQUES Y PREGUNTAS ===
 
-    // NUEVO: Sistema de oleadas mejorado
+    // NUEVO: Sistema de oleadas mejorado con balance de vida
     spawnWave() {
         this.currentWave++;
+        
+        // NUEVO: Curar defensores entre oleadas
+        if (this.currentWave > 1) {
+            this.healDefensoresBetweenWaves();
+        }
         
         // Verificar límite de oleadas
         if (this.currentWave > this.config.maxWaves) {
@@ -900,7 +962,18 @@ class CIDDefenderGame {
             return;
         }
         
-        console.log(`🌊 Oleada ${this.currentWave}: ${Math.min(this.currentWave, 3)} enemigos por defensor`);
+        // NUEVO: Actualizar vida máxima de defensores según oleada actual
+        const newMaxHealth = this.calculateDefensorHealth(this.currentWave);
+        Object.values(this.defensores).forEach(defensor => {
+            defensor.maxSalud = newMaxHealth;
+            // Si la salud actual es menor que el nuevo máximo, aumentar proporcionalmente
+            if (defensor.salud < defensor.maxSalud) {
+                const healthIncrease = Math.min(25, defensor.maxSalud - defensor.salud);
+                defensor.salud += healthIncrease;
+            }
+        });
+        
+        console.log(`🌊 Oleada ${this.currentWave} iniciada. Vida defensores: ${newMaxHealth}`);
         
         const newEnemies = this.enemyManager.spawnWave(this.currentWave);
         this.enemies.push(...newEnemies);
@@ -908,6 +981,7 @@ class CIDDefenderGame {
         // Mensaje informativo - POSICIÓN SUPERIOR
         const enemiesPerDefensor = Math.min(this.currentWave, 3);
         this.showScreenMessage(`¡Oleada ${this.currentWave}! ${enemiesPerDefensor} enemigos por defensor`, 'warning', 'top');
+        this.showScreenMessage(`Vida defensores: ${newMaxHealth}`, 'info', 'top');
     }
 
     showQuestionScreen() {
@@ -1016,7 +1090,7 @@ class CIDDefenderGame {
         this.showScreenMessage('RESPUESTA INCORRECTA', 'error', 'center');
         
         if (this.ataqueActual) {
-            // El defensor recibe daño
+            // El defensor recibe daño balanceado
             this.ataqueActual.defensor.salud -= this.ataqueActual.damage;
             this.createDamageEffect(this.ataqueActual.defensor.posicion.x, this.ataqueActual.defensor.posicion.y);
             
@@ -1024,6 +1098,7 @@ class CIDDefenderGame {
             
             // Verificar si el defensor fue eliminado
             if (this.ataqueActual.defensor.salud <= 0) {
+                this.ataqueActual.defensor.salud = 0;
                 this.showScreenMessage(`${this.ataqueActual.defensor.nombre} ha sido comprometido!`, 'error', 'top');
             }
         }
@@ -1245,8 +1320,8 @@ class CIDDefenderGame {
             this.ctx.arc(defensor.posicion.x, defensor.posicion.y, 25, 0, Math.PI * 2);
             this.ctx.fill();
             
-            // Barra de salud
-            const saludPercent = defensor.salud / 100;
+            // NUEVO: Barra de salud con porcentaje basado en salud máxima
+            const saludPercent = defensor.salud / defensor.maxSalud;
             this.ctx.fillStyle = saludPercent > 0.6 ? '#10b981' : saludPercent > 0.3 ? '#f59e0b' : '#ef4444';
             this.ctx.fillRect(defensor.posicion.x - 25, defensor.posicion.y - 40, 50 * saludPercent, 4);
             
@@ -1255,6 +1330,10 @@ class CIDDefenderGame {
             this.ctx.font = '12px Arial';
             this.ctx.textAlign = 'center';
             this.ctx.fillText(defensor.nombre, defensor.posicion.x, defensor.posicion.y + 35);
+            
+            // NUEVO: Mostrar salud actual/máxima
+            this.ctx.font = '10px Arial';
+            this.ctx.fillText(`${defensor.salud}/${defensor.maxSalud}`, defensor.posicion.x, defensor.posicion.y + 50);
         });
     }
 
@@ -1460,12 +1539,18 @@ class CIDDefenderGame {
         this.ctx.textAlign = 'left';
         
         this.ctx.fillText(`Puntos: ${this.score}`, 10, 20);
-        this.ctx.fillText(`Oleada: ${this.currentWave}/${this.config.maxWaves}`, 10, 40); // NUEVO: Mostrar máximo
+        this.ctx.fillText(`Oleada: ${this.currentWave}/${this.config.maxWaves}`, 10, 40);
         this.ctx.fillText(`Enemigos: ${this.enemies.length}`, 10, 60);
         
         // Defensores vivos
         const defensoresVivos = Object.values(this.defensores).filter(d => d.salud > 0).length;
         this.ctx.fillText(`Defensores: ${defensoresVivos}/3`, 10, 80);
+        
+        // NUEVO: Mostrar vida máxima actual de defensores
+        if (Object.values(this.defensores).length > 0) {
+            const vidaMaxima = Object.values(this.defensores)[0].maxSalud;
+            this.ctx.fillText(`Vida máxima: ${vidaMaxima}`, 10, 100);
+        }
     }
 
     // === CONDICIONES DE JUEGO ===
@@ -1499,7 +1584,7 @@ class CIDDefenderGame {
             if (pilarElement) {
                 const bar = pilarElement.querySelector('.pilar-bar');
                 if (bar) {
-                    const percent = (defensor.salud / 100) * 100;
+                    const percent = (defensor.salud / defensor.maxSalud) * 100; // NUEVO: Usar salud máxima
                     bar.style.width = `${percent}%`;
                     bar.style.background = percent > 50 ? '#10b981' : percent > 25 ? '#f59e0b' : '#ef4444';
                 }

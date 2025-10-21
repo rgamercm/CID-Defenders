@@ -1044,3 +1044,190 @@ button:focus {
     50% { transform: scale(1.05); }
     100% { transform: scale(1); }
 }
+
+/* ===== SISTEMA DE SALUD MEJORADO ===== */
+
+/* Panel de información de salud */
+.health-info-panel {
+    position: absolute;
+    top: 120px;
+    right: 20px;
+    background: rgba(15, 23, 42, 0.95);
+    padding: 15px;
+    border-radius: 10px;
+    border: 2px solid #475569;
+    backdrop-filter: blur(10px);
+    max-width: 200px;
+    z-index: 50;
+    font-size: 12px;
+}
+
+.health-header {
+    text-align: center;
+    margin-bottom: 10px;
+    border-bottom: 1px solid #334155;
+    padding-bottom: 8px;
+}
+
+.health-header h4 {
+    margin: 0 0 5px 0;
+    color: #10b981;
+    font-size: 14px;
+}
+
+.health-header small {
+    color: #9ca3af;
+    font-size: 10px;
+}
+
+.health-stats {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.defensor-health {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.defensor-name {
+    font-weight: bold;
+    font-size: 11px;
+    color: #e5e7eb;
+}
+
+.health-bar {
+    width: 100%;
+    height: 8px;
+    background: #374151;
+    border-radius: 4px;
+    overflow: hidden;
+}
+
+.health-fill {
+    height: 100%;
+    border-radius: 4px;
+    transition: width 0.3s ease;
+}
+
+.defensor-health.healthy .health-fill {
+    background: linear-gradient(90deg, #10b981, #34d399);
+}
+
+.defensor-health.warning .health-fill {
+    background: linear-gradient(90deg, #f59e0b, #fbbf24);
+}
+
+.defensor-health.critical .health-fill {
+    background: linear-gradient(90deg, #ef4444, #f87171);
+}
+
+.health-numbers {
+    font-size: 10px;
+    color: #d1d5db;
+    text-align: center;
+}
+
+.health-percent {
+    font-size: 9px;
+    color: #9ca3af;
+    text-align: center;
+}
+
+/* Efectos de animación para barras de salud */
+.health-damage {
+    animation: healthDamage 0.6s ease-in-out;
+}
+
+.health-heal {
+    animation: healthHeal 0.6s ease-in-out;
+}
+
+@keyframes healthDamage {
+    0% { transform: scale(1); }
+    25% { transform: scale(1.05); background-color: #ef4444 !important; }
+    50% { transform: scale(1); }
+    75% { transform: scale(1.02); background-color: #ef4444 !important; }
+    100% { transform: scale(1); }
+}
+
+@keyframes healthHeal {
+    0% { transform: scale(1); }
+    25% { transform: scale(1.05); background-color: #10b981 !important; }
+    50% { transform: scale(1); }
+    75% { transform: scale(1.02); background-color: #10b981 !important; }
+    100% { transform: scale(1); }
+}
+
+/* Texto de salud en indicadores CID */
+.cid-indicators .health-text {
+    font-size: 10px;
+    color: #d1d5db;
+    margin-top: 2px;
+    text-align: center;
+}
+
+/* Responsive para panel de salud */
+@media (max-width: 768px) {
+    .health-info-panel {
+        top: auto;
+        bottom: 150px;
+        right: 10px;
+        max-width: 180px;
+        font-size: 11px;
+    }
+    
+    .health-header h4 {
+        font-size: 13px;
+    }
+    
+    .defensor-name {
+        font-size: 10px;
+    }
+    
+    .health-numbers {
+        font-size: 9px;
+    }
+}
+
+/* Mejoras para las barras de salud existentes */
+.pilar-bar {
+    transition: all 0.3s ease;
+}
+
+/* Estados de salud para las barras principales */
+.pilar-bar.health-critical {
+    background: #ef4444 !important;
+    animation: pulseCritical 1s infinite;
+}
+
+@keyframes pulseCritical {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.7; }
+}
+
+/* Mejoras visuales para el top-bar con estadísticas de salud */
+.top-bar .health-summary {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 12px;
+}
+
+.health-indicator {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.health-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+}
+
+.health-dot.healthy { background: #10b981; }
+.health-dot.warning { background: #f59e0b; }
+.health-dot.critical { background: #ef4444; }
