@@ -336,16 +336,8 @@ class CIDDefenderGame {
         return Math.floor(baseDamage * waveMultiplier);
     }
 
-    // NUEVO: Sistema de curación entre oleadas
-    healDefensoresBetweenWaves() {
-        Object.values(this.defensores).forEach(defensor => {
-            if (defensor.salud > 0) {
-                const healAmount = 20 + (this.currentWave * 2); // +20 base +2 por oleada
-                defensor.salud = Math.min(defensor.salud + healAmount, defensor.maxSalud);
-                console.log(`💚 ${defensor.nombre} curado +${healAmount} (${defensor.salud}/${defensor.maxSalud})`);
-            }
-        });
-    }
+    // MODIFICADO: Eliminar curación automática entre oleadas
+    // healDefensoresBetweenWaves() función ELIMINADA
 
     showScreenMessage(text, type = 'info', position = 'center') {
         const messageId = this.messageIdCounter++;
@@ -947,14 +939,14 @@ class CIDDefenderGame {
 
     // === SISTEMA DE ATAQUES Y PREGUNTAS ===
 
-    // NUEVO: Sistema de oleadas mejorado con balance de vida
+    // MODIFICADO: Sistema de oleadas sin curación automática
     spawnWave() {
         this.currentWave++;
         
-        // NUEVO: Curar defensores entre oleadas
-        if (this.currentWave > 1) {
-            this.healDefensoresBetweenWaves();
-        }
+        // MODIFICACIÓN: Eliminada la curación entre oleadas
+        // if (this.currentWave > 1) {
+        //     this.healDefensoresBetweenWaves();
+        // }
         
         // Verificar límite de oleadas
         if (this.currentWave > this.config.maxWaves) {
@@ -962,18 +954,15 @@ class CIDDefenderGame {
             return;
         }
         
-        // NUEVO: Actualizar vida máxima de defensores según oleada actual
+        // MODIFICADO: Solo actualizar vida máxima, NO curar automáticamente
         const newMaxHealth = this.calculateDefensorHealth(this.currentWave);
         Object.values(this.defensores).forEach(defensor => {
             defensor.maxSalud = newMaxHealth;
-            // Si la salud actual es menor que el nuevo máximo, aumentar proporcionalmente
-            if (defensor.salud < defensor.maxSalud) {
-                const healthIncrease = Math.min(25, defensor.maxSalud - defensor.salud);
-                defensor.salud += healthIncrease;
-            }
+            // MODIFICACIÓN: NO aumentar salud automáticamente al cambiar oleada
+            // La única forma de curar es respondiendo correctamente
         });
         
-        console.log(`🌊 Oleada ${this.currentWave} iniciada. Vida defensores: ${newMaxHealth}`);
+        console.log(`🌊 Oleada ${this.currentWave} iniciada. Vida máxima defensores: ${newMaxHealth}`);
         
         const newEnemies = this.enemyManager.spawnWave(this.currentWave);
         this.enemies.push(...newEnemies);
@@ -981,7 +970,7 @@ class CIDDefenderGame {
         // Mensaje informativo - POSICIÓN SUPERIOR
         const enemiesPerDefensor = Math.min(this.currentWave, 3);
         this.showScreenMessage(`¡Oleada ${this.currentWave}! ${enemiesPerDefensor} enemigos por defensor`, 'warning', 'top');
-        this.showScreenMessage(`Vida defensores: ${newMaxHealth}`, 'info', 'top');
+        this.showScreenMessage(`Vida máxima: ${newMaxHealth}`, 'info', 'top');
     }
 
     showQuestionScreen() {
@@ -1069,7 +1058,20 @@ class CIDDefenderGame {
         this.showScreenMessage('¡RESPUESTA CORRECTA!', 'success', 'center');
         
         if (this.ataqueActual) {
-            // El enemigo recibe daño
+            // NUEVO: Curar al defensor atacado cuando se responde correctamente
+            const healAmount = 25 + (this.currentWave * 2); // Curación base + bonus por oleada
+            const defensor = this.ataqueActual.defensor;
+            const saludAnterior = defensor.salud;
+            
+            defensor.salud = Math.min(defensor.salud + healAmount, defensor.maxSalud);
+            const saludCurada = defensor.salud - saludAnterior;
+            
+            if (saludCurada > 0) {
+                this.showScreenMessage(`+${saludCurada} salud para ${defensor.nombre}`, 'success', 'bottom');
+                this.createHealEffect(defensor.posicion.x, defensor.posicion.y);
+            }
+            
+            // El enemigo también recibe daño
             this.ataqueActual.enemy.health -= this.ataqueActual.damage * 2;
             
             if (this.ataqueActual.enemy.health <= 0) {
@@ -1083,6 +1085,20 @@ class CIDDefenderGame {
         
         this.score += 50;
         this.showScreenMessage('+50 puntos', 'success', 'bottom');
+    }
+
+    // NUEVO: Efecto visual de curación
+    createHealEffect(x, y) {
+        for (let i = 0; i < 15; i++) {
+            this.particles.push({
+                x: x,
+                y: y,
+                vx: (Math.random() - 0.5) * 80,
+                vy: (Math.random() - 0.5) * 80 - 20, // Flotar hacia arriba
+                life: 1.5,
+                color: '#10b981'
+            });
+        }
     }
 
     onWrongAnswer() {
