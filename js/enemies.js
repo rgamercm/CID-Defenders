@@ -1,6 +1,7 @@
 /**
  * SISTEMA DE ENEMIGOS RENOVADO - CID DEFENDER
  * Enemigos que atacan defensores y activan preguntas
+ * MEJORA: Spawn multi-direccional desde 4 lados del mapa
  */
 
 class EnemyManager {
@@ -72,46 +73,58 @@ class EnemyManager {
         };
     }
 
-    // NUEVO: Sistema de spawn points distribuidos
+    // MEJORA IMPLEMENTADA: Sistema de spawn points distribuidos en 4 lados
     getSpawnPositions(waveNumber) {
-        // Múltiples puntos de spawn distribuidos estratégicamente
+        // Puntos de spawn distribuidos estratégicamente en TODOS los lados
         const spawnPoints = [
-            // Lado izquierdo - arriba, centro, abajo
-            { x: -30, y: 80 }, 
-            { x: -30, y: 250 }, 
-            { x: -30, y: 420 },
+            // === LADO IZQUIERDO (x negativo) ===
+            { x: -30, y: 80, side: 'left' }, 
+            { x: -30, y: 250, side: 'left' }, 
+            { x: -30, y: 420, side: 'left' },
             
-            // Lado superior - izquierda, centro, derecha
-            { x: 150, y: -30 }, 
-            { x: 400, y: -30 }, 
-            { x: 650, y: -30 },
+            // === LADO SUPERIOR (y negativo) ===
+            { x: 150, y: -30, side: 'top' }, 
+            { x: 400, y: -30, side: 'top' }, 
+            { x: 650, y: -30, side: 'top' },
             
-            // Lado derecho - arriba, centro, abajo
-            { x: 830, y: 80 }, 
-            { x: 830, y: 250 }, 
-            { x: 830, y: 420 },
+            // === LADO DERECHO (x mayor al ancho) ===
+            { x: 830, y: 80, side: 'right' }, 
+            { x: 830, y: 250, side: 'right' }, 
+            { x: 830, y: 420, side: 'right' },
             
-            // Lado inferior - izquierda, centro, derecha
-            { x: 150, y: 530 }, 
-            { x: 400, y: 530 }, 
-            { x: 650, y: 530 }
+            // === LADO INFERIOR (y mayor al alto) ===
+            { x: 150, y: 530, side: 'bottom' }, 
+            { x: 400, y: 530, side: 'bottom' }, 
+            { x: 650, y: 530, side: 'bottom' }
         ];
         
-        // En oleadas altas, usar más puntos de spawn
+        // MEJORA: En oleadas altas, usar más puntos de spawn para mayor variedad
         if (waveNumber > 3) {
             spawnPoints.push(
-                { x: -30, y: 150 }, { x: -30, y: 350 }, // Izquierda adicional
-                { x: 830, y: 150 }, { x: 830, y: 350 }  // Derecha adicional
+                // Izquierda adicional
+                { x: -30, y: 150, side: 'left' }, 
+                { x: -30, y: 350, side: 'left' },
+                // Derecha adicional  
+                { x: 830, y: 150, side: 'right' }, 
+                { x: 830, y: 350, side: 'right' },
+                // Superior adicional
+                { x: 50, y: -30, side: 'top' },
+                { x: 750, y: -30, side: 'top' },
+                // Inferior adicional
+                { x: 50, y: 530, side: 'bottom' },
+                { x: 750, y: 530, side: 'bottom' }
             );
         }
         
+        console.log(`📍 ${spawnPoints.length} puntos de spawn generados para oleada ${waveNumber}`);
         return spawnPoints;
     }
 
+    // MEJORA IMPLEMENTADA: Distribución inteligente de enemigos entre spawn points
     spawnWave(waveNumber) {
         const enemies = [];
         
-        // NUEVO SISTEMA: Enemigos distribuidos proporcionalmente
+        // Sistema de distribución proporcional mantenido
         const enemiesPerDefensor = Math.min(waveNumber, 3);
         const totalEnemies = enemiesPerDefensor * 3;
         const spawnPoints = this.getSpawnPositions(waveNumber);
@@ -126,16 +139,39 @@ class EnemyManager {
             const defensorIndex = i % 3;
             const assignedDefensor = defensorNames[defensorIndex];
             
-            // NUEVO: Distribuir enemigos entre diferentes puntos de spawn
+            // MEJORA: Distribuir enemigos entre diferentes puntos de spawn de forma balanceada
             const spawnIndex = i % spawnPoints.length;
             const spawnPoint = spawnPoints[spawnIndex];
             
             const enemyType = this.selectRandomEnemyType(waveNumber);
             const enemy = this.createEnemy(enemyType, waveNumber, spawnPoint, assignedDefensor);
             enemies.push(enemy);
+            
+            console.log(`👾 ${enemyType} creado en ${spawnPoint.side} (${spawnPoint.x}, ${spawnPoint.y}) para ${assignedDefensor}`);
         }
         
+        // MEJORA: Informe de distribución por lados
+        this.logSpawnDistribution(enemies);
+        
         return enemies;
+    }
+
+    // MEJORA: Función para mostrar distribución de spawns por lados
+    logSpawnDistribution(enemies) {
+        const sideCount = {
+            left: 0,
+            top: 0,
+            right: 0,
+            bottom: 0
+        };
+        
+        enemies.forEach(enemy => {
+            if (enemy.spawnSide) {
+                sideCount[enemy.spawnSide]++;
+            }
+        });
+        
+        console.log(`📊 Distribución de spawns: Izquierda=${sideCount.left}, Superior=${sideCount.top}, Derecha=${sideCount.right}, Inferior=${sideCount.bottom}`);
     }
 
     selectRandomEnemyType(waveNumber) {
@@ -189,10 +225,10 @@ class EnemyManager {
             color: config.color,
             score: config.score,
             description: config.description,
-            assignedDefensor: assignedDefensor // NUEVO: Defensor asignado
+            assignedDefensor: assignedDefensor,
+            spawnSide: spawnPoint.side // MEJORA: Guardar lado de spawn para tracking
         });
         
-        console.log(`👾 Enemigo ${type} creado en (${spawnPoint.x}, ${spawnPoint.y}) para ${assignedDefensor}`);
         return enemy;
     }
 }
@@ -211,13 +247,14 @@ class Enemy {
         this.color = config.color;
         this.score = config.score;
         this.description = config.description;
-        this.assignedDefensor = config.assignedDefensor; // NUEVO: Defensor pre-asignado
+        this.assignedDefensor = config.assignedDefensor;
+        this.spawnSide = config.spawnSide; // MEJORA: Lado donde apareció
         
         // Estado del enemigo
         this.targetDefensor = null;
         this.isAttacking = false;
         this.attackCooldown = 0;
-        this.originalDamage = config.damage; // Guardar daño original para efectos
+        this.originalDamage = config.damage;
         
         // Efectos visuales
         this.hitEffectTimer = 0;
@@ -254,38 +291,45 @@ class Enemy {
         const defensoresVivos = Object.values(defensores).filter(d => d.salud > 0);
         if (defensoresVivos.length === 0) return;
         
-        // Si tenía un defensor asignado pero murió, buscar uno similar
-        if (this.assignedDefensor) {
-            const defensorNames = Object.keys(defensores);
-            const similarDefensor = defensorNames.find(name => 
-                defensores[name].salud > 0 && name !== this.assignedDefensor
-            );
-            if (similarDefensor) {
-                this.targetDefensor = defensores[similarDefensor];
-                return;
-            }
+        // MEJORA: Comportamiento inteligente basado en posición de spawn
+        if (this.spawnSide) {
+            // Priorizar defensor más cercano al lado de spawn
+            let closestDefensor = defensoresVivos[0];
+            let minDistance = Infinity;
+            
+            defensoresVivos.forEach(defensor => {
+                const distance = this.calculateDistanceToDefensor(defensor);
+                if (distance < minDistance) {
+                    minDistance = distance;
+                    closestDefensor = defensor;
+                }
+            });
+            
+            this.targetDefensor = closestDefensor;
+            return;
         }
         
-        // Comportamientos especiales según tipo
+        // Comportamientos especiales según tipo (mantenido)
         switch (this.type) {
             case 'ddos':
-                // DDoS prefiere atacar a la Disponibilidad
                 this.targetDefensor = defensoresVivos.find(d => d.nombre === "Disponibilidad") || defensoresVivos[0];
                 break;
             case 'phishing':
-                // Phishing prefiere atacar a la Confidencialidad
                 this.targetDefensor = defensoresVivos.find(d => d.nombre === "Confidencialidad") || defensoresVivos[0];
                 break;
             case 'ransomware':
-                // Ransomware prefiere atacar a la Integridad
                 this.targetDefensor = defensoresVivos.find(d => d.nombre === "Integridad") || defensoresVivos[0];
                 break;
             default:
-                // Enemigos normales eligen al azar
                 this.targetDefensor = defensoresVivos[Math.floor(Math.random() * defensoresVivos.length)];
         }
-        
-        console.log(`🎯 ${this.name} apunta a ${this.targetDefensor.nombre}`);
+    }
+
+    // MEJORA: Calcular distancia considerando posición actual
+    calculateDistanceToDefensor(defensor) {
+        const dx = defensor.posicion.x - this.x;
+        const dy = defensor.posicion.y - this.y;
+        return Math.sqrt(dx * dx + dy * dy);
     }
 
     moveTowardsTarget(deltaTime) {
@@ -311,7 +355,7 @@ class Enemy {
 
     prepareAttack() {
         this.isAttacking = true;
-        console.log(`⚔️ ${this.name} prepara ataque contra ${this.targetDefensor.nombre}`);
+        console.log(`⚔️ ${this.name} (desde ${this.spawnSide}) prepara ataque contra ${this.targetDefensor.nombre}`);
         
         // El ataque se completa en el próximo frame, activando la pregunta
     }
@@ -327,7 +371,6 @@ class Enemy {
             this.slowEffectTimer -= deltaTime;
             if (this.slowEffectTimer <= 0) {
                 this.speed = this.originalSpeed;
-                console.log(`🐢 ${this.name} recupera velocidad normal`);
             }
         }
     }
@@ -336,24 +379,19 @@ class Enemy {
         this.health -= amount;
         this.hitEffectTimer = 0.2;
         
-        console.log(`💥 ${this.name} recibe ${amount} de daño - Salud: ${this.health}/${this.maxHealth}`);
-        
         return this.health <= 0;
     }
 
     slow(factor, duration) {
         this.speed = this.originalSpeed * factor;
         this.slowEffectTimer = duration;
-        console.log(`🐢 ${this.name} ralentizado al ${factor * 100}% por ${duration}s`);
     }
 
     blockAttacks(duration) {
         this.damage = 0;
         setTimeout(() => {
             this.damage = this.originalDamage;
-            console.log(`🛡️ ${this.name} puede atacar nuevamente`);
         }, duration * 1000);
-        console.log(`🛡️ ${this.name} bloqueado por ${duration}s`);
     }
 
     draw(ctx) {
@@ -385,10 +423,13 @@ class Enemy {
             this.drawAttackIndicator(ctx);
         }
         
-        // NUEVO: Indicador de defensor asignado
+        // Indicador de defensor asignado
         if (this.assignedDefensor) {
             this.drawAssignedDefensorIndicator(ctx);
         }
+        
+        // MEJORA: Indicador visual del lado de spawn
+        this.drawSpawnSideIndicator(ctx);
         
         ctx.restore();
     }
@@ -453,7 +494,7 @@ class Enemy {
     }
 
     drawAssignedDefensorIndicator(ctx) {
-        // NUEVO: Indicador visual del defensor asignado
+        // Indicador visual del defensor asignado
         const colors = {
             'Confidencialidad': '#3498db',
             'Integridad': '#2ecc71', 
@@ -477,6 +518,28 @@ class Enemy {
         ctx.fillText(initial, this.x, this.y - this.radius - 5);
     }
 
+    // MEJORA: Indicador visual del lado de spawn
+    drawSpawnSideIndicator(ctx) {
+        const colors = {
+            'left': '#3b82f6',    // Azul para izquierda
+            'top': '#10b981',     // Verde para superior  
+            'right': '#f59e0b',   // Amarillo para derecha
+            'bottom': '#ef4444'   // Rojo para inferior
+        };
+        
+        const color = colors[this.spawnSide] || '#9ca3af';
+        
+        // Pequeño indicador triangular en la base
+        ctx.fillStyle = color;
+        ctx.beginPath();
+        const indicatorSize = 4;
+        ctx.moveTo(this.x - indicatorSize, this.y + this.radius + 3);
+        ctx.lineTo(this.x + indicatorSize, this.y + this.radius + 3);
+        ctx.lineTo(this.x, this.y + this.radius + 3 + indicatorSize);
+        ctx.closePath();
+        ctx.fill();
+    }
+
     getInfo() {
         return {
             name: this.name,
@@ -487,7 +550,8 @@ class Enemy {
             speed: this.speed,
             description: this.description,
             score: this.score,
-            assignedDefensor: this.assignedDefensor // NUEVO: Incluir en info
+            assignedDefensor: this.assignedDefensor,
+            spawnSide: this.spawnSide // MEJORA: Incluir información de spawn
         };
     }
 }
