@@ -30,6 +30,18 @@ class CIDDefenderGame {
             waveInterval: 10000
         };
 
+        // Sistema de mensajes en pantalla
+        this.screenMessages = [];
+        this.messageDuration = 3.0; // 3 segundos
+
+        // Contadores de respuestas
+        this.stats = {
+            correctAnswers: 0,
+            wrongAnswers: 0,
+            totalAnswered: 0,
+            accuracy: 100
+        };
+
         this.canvas = null;
         this.ctx = null;
         this.score = this.config.startingScore;
@@ -169,6 +181,128 @@ class CIDDefenderGame {
         };
     }
 
+    showScreenMessage(text, type = 'info') {
+        const message = {
+            text: text,
+            type: type, // 'success', 'error', 'info', 'warning'
+            duration: this.messageDuration,
+            timer: 0,
+            x: this.config.canvasWidth / 2,
+            y: 150,
+            alpha: 1.0,
+            scale: 1.0
+        };
+        
+        this.screenMessages.push(message);
+        console.log(`📢 Mensaje en pantalla: ${text} (${type})`);
+    }
+
+    updateScreenMessages(deltaTime) {
+        this.screenMessages = this.screenMessages.filter(message => {
+            message.timer += deltaTime;
+            
+            // Animación de entrada y salida
+            if (message.timer < 0.3) {
+                // Escalado al aparecer
+                message.scale = utils.easeInOut(message.timer / 0.3);
+            } else if (message.timer > message.duration - 0.3) {
+                // Escalado al desaparecer
+                message.scale = utils.easeInOut((message.duration - message.timer) / 0.3);
+            } else {
+                message.scale = 1.0;
+            }
+            
+            message.alpha = 1.0 - (message.timer / message.duration);
+            
+            // Efecto de flotación suave
+            message.y = 150 + Math.sin(message.timer * 5) * 5;
+            
+            return message.timer < message.duration;
+        });
+    }
+
+    drawScreenMessages() {
+        this.screenMessages.forEach(message => {
+            this.ctx.save();
+            
+            // Aplicar transformaciones para animación
+            this.ctx.translate(message.x, message.y);
+            this.ctx.scale(message.scale, message.scale);
+            
+            // Configurar estilo según el tipo de mensaje
+            let fillColor, shadowColor, fontSize;
+            switch (message.type) {
+                case 'success':
+                    fillColor = `rgba(16, 185, 129, ${message.alpha})`;
+                    shadowColor = 'rgba(5, 150, 105, 0.8)';
+                    fontSize = 'bold 28px Arial';
+                    break;
+                case 'error':
+                    fillColor = `rgba(239, 68, 68, ${message.alpha})`;
+                    shadowColor = 'rgba(185, 28, 28, 0.8)';
+                    fontSize = 'bold 28px Arial';
+                    break;
+                case 'warning':
+                    fillColor = `rgba(245, 158, 11, ${message.alpha})`;
+                    shadowColor = 'rgba(180, 83, 9, 0.8)';
+                    fontSize = 'bold 24px Arial';
+                    break;
+                default:
+                    fillColor = `rgba(59, 130, 246, ${message.alpha})`;
+                    shadowColor = 'rgba(30, 64, 175, 0.8)';
+                    fontSize = 'bold 24px Arial';
+            }
+            
+            // Sombra para mejor legibilidad
+            this.ctx.shadowColor = shadowColor;
+            this.ctx.shadowBlur = 8;
+            this.ctx.shadowOffsetX = 0;
+            this.ctx.shadowOffsetY = 0;
+            
+            // Configurar texto
+            this.ctx.fillStyle = fillColor;
+            this.ctx.font = fontSize;
+            this.ctx.textAlign = 'center';
+            this.ctx.textBaseline = 'middle';
+            
+            // Dibujar mensaje
+            this.ctx.fillText(message.text, 0, 0);
+            
+            this.ctx.restore();
+        });
+    }
+
+    updateStats(isCorrect) {
+        this.stats.totalAnswered++;
+        
+        if (isCorrect) {
+            this.stats.correctAnswers++;
+        } else {
+            this.stats.wrongAnswers++;
+        }
+        
+        // Calcular precisión
+        this.stats.accuracy = this.stats.totalAnswered > 0 
+            ? Math.round((this.stats.correctAnswers / this.stats.totalAnswered) * 100)
+            : 100;
+            
+        console.log(`📊 Estadísticas actualizadas: ${this.stats.correctAnswers}C/${this.stats.wrongAnswers}I (${this.stats.accuracy}%)`);
+        
+        // Actualizar UI
+        this.updateStatsUI();
+    }
+
+    updateStatsUI() {
+        // Actualizar elementos de estadísticas si existen
+        const correctElement = document.getElementById('correctAnswers');
+        const wrongElement = document.getElementById('wrongAnswers');
+        const accuracyElement = document.getElementById('accuracyRate');
+        
+        if (correctElement) correctElement.textContent = this.stats.correctAnswers;
+        if (wrongElement) wrongElement.textContent = this.stats.wrongAnswers;
+        if (accuracyElement) accuracyElement.textContent = `${this.stats.accuracy}%`;
+    }
+
     createQuestionManager() {
         return {
             getRandomQuestion: () => {
@@ -259,6 +393,14 @@ class CIDDefenderGame {
         this.gameTime = 0;
         this.waveTimer = 0;
         
+        // Reset estadísticas
+        this.stats = {
+            correctAnswers: 0,
+            wrongAnswers: 0,
+            totalAnswered: 0,
+            accuracy: 100
+        };
+        
         // Reset defensores
         this.defensores = JSON.parse(JSON.stringify(DEFENSORES));
         
@@ -267,8 +409,10 @@ class CIDDefenderGame {
         this.towers = [];
         this.projectiles = [];
         this.particles = [];
+        this.screenMessages = [];
         
         this.updateUI();
+        this.updateStatsUI();
     }
 
     setGameState(newState) {
@@ -300,10 +444,12 @@ class CIDDefenderGame {
             case GAME_STATES.GAME_OVER:
                 this.showScreen('gameOverScreen');
                 this.stopGameLoop();
+                this.showFinalStats();
                 break;
             case GAME_STATES.VICTORY:
                 this.showScreen('victoryScreen');
                 this.stopGameLoop();
+                this.showFinalStats();
                 break;
         }
     }
@@ -361,6 +507,7 @@ class CIDDefenderGame {
         this.updateTowers(deltaTime);
         this.updateProjectiles(deltaTime);
         this.updateParticles(deltaTime);
+        this.updateScreenMessages(deltaTime);
         this.checkGameConditions();
         this.updateUI();
     }
@@ -598,6 +745,9 @@ class CIDDefenderGame {
     onAnswerSelected(selectedIndex) {
         const isCorrect = selectedIndex === this.currentQuestion.correct;
         
+        // Actualizar estadísticas
+        this.updateStats(isCorrect);
+        
         if (isCorrect) {
             this.onCorrectAnswer();
         } else {
@@ -609,6 +759,7 @@ class CIDDefenderGame {
     }
 
     onQuestionTimeOut() {
+        this.updateStats(false); // Respuesta incorrecta por tiempo
         this.onWrongAnswer();
         this.ataqueActual = null;
         this.setGameState(GAME_STATES.PLAYING);
@@ -616,6 +767,7 @@ class CIDDefenderGame {
 
     onCorrectAnswer() {
         console.log('✅ Respuesta correcta!');
+        this.showScreenMessage('¡RESPUESTA CORRECTA!', 'success');
         
         if (this.ataqueActual) {
             // El enemigo recibe daño
@@ -624,19 +776,43 @@ class CIDDefenderGame {
             if (this.ataqueActual.enemy.health <= 0) {
                 this.score += this.ataqueActual.enemy.score;
                 this.createCelebrationEffect();
+                this.showScreenMessage(`+${this.ataqueActual.enemy.score} puntos`, 'success');
+            } else {
+                this.showScreenMessage('¡Enemigo dañado!', 'success');
             }
         }
         
         this.score += 50;
+        this.showScreenMessage('+50 puntos', 'success');
     }
 
     onWrongAnswer() {
         console.log('❌ Respuesta incorrecta');
+        this.showScreenMessage('RESPUESTA INCORRECTA', 'error');
         
         if (this.ataqueActual) {
             // El defensor recibe daño
             this.ataqueActual.defensor.salud -= this.ataqueActual.damage;
             this.createDamageEffect(this.ataqueActual.defensor.posicion.x, this.ataqueActual.defensor.posicion.y);
+            
+            this.showScreenMessage(`-${this.ataqueActual.damage} salud`, 'error');
+        }
+        
+        this.showScreenMessage('¡Enemigo ataca!', 'warning');
+    }
+
+    showFinalStats() {
+        // Mostrar estadísticas finales en pantallas de fin de juego
+        const finalStatsElement = document.getElementById('finalStats');
+        if (finalStatsElement) {
+            finalStatsElement.innerHTML = `
+                <div style="margin: 15px 0; padding: 10px; background: rgba(255,255,255,0.1); border-radius: 10px;">
+                    <h4>Estadísticas de Respuestas:</h4>
+                    <p>✅ Correctas: ${this.stats.correctAnswers}</p>
+                    <p>❌ Incorrectas: ${this.stats.wrongAnswers}</p>
+                    <p>🎯 Precisión: ${this.stats.accuracy}%</p>
+                </div>
+            `;
         }
     }
 
@@ -779,6 +955,8 @@ class CIDDefenderGame {
         this.drawProjectiles();
         this.drawParticles();
         this.drawDefensores();
+        this.drawScreenMessages();
+        this.drawStatsOverlay();
         this.drawUI();
     }
 
@@ -799,6 +977,31 @@ class CIDDefenderGame {
             this.ctx.lineTo(this.config.canvasWidth, y);
             this.ctx.stroke();
         }
+    }
+
+    drawStatsOverlay() {
+        // Dibujar panel de estadísticas en esquina superior derecha
+        this.ctx.save();
+        
+        // Fondo del panel
+        this.ctx.fillStyle = 'rgba(15, 23, 42, 0.9)';
+        this.ctx.strokeStyle = '#334155';
+        this.ctx.lineWidth = 2;
+        this.ctx.beginPath();
+        this.ctx.roundRect(this.config.canvasWidth - 180, 10, 170, 80, 10);
+        this.ctx.fill();
+        this.ctx.stroke();
+        
+        // Texto de estadísticas
+        this.ctx.fillStyle = '#ffffff';
+        this.ctx.font = '12px Arial';
+        this.ctx.textAlign = 'left';
+        
+        this.ctx.fillText(`✅ Correctas: ${this.stats.correctAnswers}`, this.config.canvasWidth - 170, 30);
+        this.ctx.fillText(`❌ Incorrectas: ${this.stats.wrongAnswers}`, this.config.canvasWidth - 170, 50);
+        this.ctx.fillText(`🎯 Precisión: ${this.stats.accuracy}%`, this.config.canvasWidth - 170, 70);
+        
+        this.ctx.restore();
     }
 
     drawDefensores() {

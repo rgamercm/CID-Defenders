@@ -54,6 +54,12 @@
                     <div class="score">Puntos: <span id="scoreValue">0</span></div>
                     <div class="lives">Vidas: <span id="livesValue">3</span></div>
                     <div class="wave">Oleada: <span id="waveValue">1</span></div>
+                    <!-- Contadores de respuestas -->
+                    <div class="stats">
+                        ✅ <span id="correctAnswers">0</span> | 
+                        ❌ <span id="wrongAnswers">0</span> | 
+                        🎯 <span id="accuracyRate">100%</span>
+                    </div>
                 </div>
                 
                 <div class="control-buttons">
@@ -83,6 +89,12 @@
         <div id="pauseScreen" class="screen overlay">
             <div class="pause-content">
                 <h2>JUEGO EN PAUSA</h2>
+                <div class="stats-panel">
+                    <h3>Estadísticas Actuales</h3>
+                    <p>✅ Respuestas Correctas: <span id="pauseCorrect">0</span></p>
+                    <p>❌ Respuestas Incorrectas: <span id="pauseWrong">0</span></p>
+                    <p>🎯 Precisión: <span id="pauseAccuracy">100%</span></p>
+                </div>
                 <div class="pause-options">
                     <button id="resumeGame" class="pause-btn">Reanudar</button>
                     <button id="restartGame" class="pause-btn">Reiniciar</button>
@@ -101,6 +113,9 @@
                 <div class="question-timer">
                     <div class="timer-bar"></div>
                 </div>
+                <div class="question-stats">
+                    <small>Estadísticas: ✅ <span id="questionCorrect">0</span> | ❌ <span id="questionWrong">0</span> | 🎯 <span id="questionAccuracy">100%</span></small>
+                </div>
             </div>
         </div>
 
@@ -109,6 +124,9 @@
             <div class="end-game-content">
                 <h2>GAME OVER</h2>
                 <p>Puntuación Final: <span id="finalScore">0</span></p>
+                <div id="finalStats">
+                    <!-- Estadísticas finales se insertarán aquí -->
+                </div>
                 <div class="end-buttons">
                     <button id="restartFromGameOver" class="end-btn">Reintentar</button>
                     <button id="menuFromGameOver" class="end-btn">Menú Principal</button>
@@ -122,6 +140,9 @@
                 <h2>¡VICTORIA!</h2>
                 <p>Has protegido exitosamente los pilares CID</p>
                 <p>Puntuación: <span id="victoryScore">0</span></p>
+                <div id="victoryStats">
+                    <!-- Estadísticas de victoria se insertarán aquí -->
+                </div>
                 <div class="end-buttons">
                     <button id="restartFromVictory" class="end-btn">Jugar Again</button>
                     <button id="menuFromVictory" class="end-btn">Menú Principal</button>
@@ -148,6 +169,14 @@
                         <li>Cada respuesta correcta = Nueva torre disponible</li>
                         <li>Cada error = Enemigos más fuertes</li>
                         <li>Usa las defensas adecuadas contra cada tipo de amenaza</li>
+                        <li>Mira tus estadísticas de respuestas en tiempo real</li>
+                    </ul>
+
+                    <h3>📊 Sistema de Puntuación</h3>
+                    <ul>
+                        <li>✅ Respuesta correcta: +50 puntos</li>
+                        <li>❌ Respuesta incorrecta: -salud del defensor</li>
+                        <li>🎯 La precisión afecta bonificaciones</li>
                     </ul>
 
                     <h3>🛡️ Defensas Disponibles</h3>

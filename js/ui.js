@@ -39,6 +39,7 @@ class UIManager {
                 case '4': this.selectTower('antivirus'); break;
                 case 'Escape': this.deselectTower(); break;
                 case ' ': this.toggleTowerPanel(); break;
+                case 's': this.toggleStatsPanel(); break;
             }
         });
     }
@@ -242,17 +243,14 @@ class UIManager {
         }
 
         const message = document.createElement('div');
-        message.className = `message message-${type}`;
+        message.className = `message message-${type} message-pop`;
         message.textContent = text;
 
         messageContainer.appendChild(message);
 
-        // Animación de entrada
-        setTimeout(() => message.classList.add('show'), 10);
-
         // Auto-remover después de 3 segundos
         setTimeout(() => {
-            message.classList.remove('show');
+            message.classList.remove('message-pop');
             setTimeout(() => {
                 if (message.parentNode) {
                     message.parentNode.removeChild(message);
@@ -265,6 +263,7 @@ class UIManager {
         this.updateTowerButtons();
         this.updateScoreDisplay();
         this.updateWaveProgress();
+        this.updateStatsDisplay();
     }
 
     updateScoreDisplay() {
@@ -283,10 +282,44 @@ class UIManager {
         }
     }
 
+    updateStatsDisplay() {
+        if (!window.game) return;
+
+        const { stats } = window.game;
+        
+        // Actualizar elementos en el top-bar
+        const correctElement = document.getElementById('correctAnswers');
+        const wrongElement = document.getElementById('wrongAnswers');
+        const accuracyElement = document.getElementById('accuracyRate');
+        
+        if (correctElement) correctElement.textContent = stats.correctAnswers;
+        if (wrongElement) wrongElement.textContent = stats.wrongAnswers;
+        if (accuracyElement) accuracyElement.textContent = `${stats.accuracy}%`;
+
+        // Actualizar elementos en pantalla de pausa
+        const pauseCorrect = document.getElementById('pauseCorrect');
+        const pauseWrong = document.getElementById('pauseWrong');
+        const pauseAccuracy = document.getElementById('pauseAccuracy');
+        
+        if (pauseCorrect) pauseCorrect.textContent = stats.correctAnswers;
+        if (pauseWrong) pauseWrong.textContent = stats.wrongAnswers;
+        if (pauseAccuracy) pauseAccuracy.textContent = `${stats.accuracy}%`;
+
+        // Actualizar elementos en pantalla de pregunta
+        const questionCorrect = document.getElementById('questionCorrect');
+        const questionWrong = document.getElementById('questionWrong');
+        const questionAccuracy = document.getElementById('questionAccuracy');
+        
+        if (questionCorrect) questionCorrect.textContent = stats.correctAnswers;
+        if (questionWrong) questionWrong.textContent = stats.wrongAnswers;
+        if (questionAccuracy) questionAccuracy.textContent = `${stats.accuracy}%`;
+    }
+
     setupGameEventHandlers() {
         // Escuchar eventos personalizados del juego
         document.addEventListener('gameScoreUpdate', () => this.updateScoreDisplay());
         document.addEventListener('gameWaveUpdate', () => this.updateWaveProgress());
+        document.addEventListener('gameStatsUpdate', () => this.updateStatsDisplay());
         document.addEventListener('towerUnlocked', (e) => this.onTowerUnlocked(e.detail));
     }
 
@@ -301,6 +334,16 @@ class UIManager {
         if (panel) {
             this.towerPanelVisible = !this.towerPanelVisible;
             panel.style.display = this.towerPanelVisible ? 'flex' : 'none';
+        }
+    }
+
+    toggleStatsPanel() {
+        // Función para alternar visibilidad del panel de estadísticas
+        const statsPanel = document.querySelector('.top-bar .stats');
+        if (statsPanel) {
+            const isVisible = statsPanel.style.display !== 'none';
+            statsPanel.style.display = isVisible ? 'none' : 'block';
+            this.showMessage(isVisible ? 'Estadísticas ocultas' : 'Estadísticas visibles', 'info');
         }
     }
 
