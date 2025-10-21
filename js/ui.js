@@ -278,7 +278,15 @@ class UIManager {
     updateWaveProgress() {
         const waveElement = document.getElementById('waveValue');
         if (waveElement && window.game) {
-            waveElement.textContent = game.currentWave;
+            // NUEVO: Mostrar progreso de oleadas (actual/máximo)
+            const maxWaves = game.config?.maxWaves || 10;
+            waveElement.textContent = `${game.currentWave}/${maxWaves}`;
+            
+            // Efecto visual cuando avanza oleada
+            if (game.currentWave > 0) {
+                waveElement.classList.add('score-update');
+                setTimeout(() => waveElement.classList.remove('score-update'), 1000);
+            }
         }
     }
 
@@ -321,12 +329,24 @@ class UIManager {
         document.addEventListener('gameWaveUpdate', () => this.updateWaveProgress());
         document.addEventListener('gameStatsUpdate', () => this.updateStatsDisplay());
         document.addEventListener('towerUnlocked', (e) => this.onTowerUnlocked(e.detail));
+        
+        // NUEVO: Evento para notificar nueva oleada
+        document.addEventListener('gameNewWave', (e) => this.onNewWave(e.detail));
     }
 
     onTowerUnlocked(towerType) {
         towerManager.addAvailableTower(towerType);
         this.showMessage(`¡Nueva torre desbloqueada: ${towerManager.towerConfigs[towerType].name}!`, 'success');
         this.updateTowerButtons();
+    }
+
+    // NUEVO: Manejar notificación de nueva oleada
+    onNewWave(waveInfo) {
+        const enemiesPerDefensor = Math.min(waveInfo.waveNumber, 3);
+        this.showMessage(
+            `¡Oleada ${waveInfo.waveNumber}! ${enemiesPerDefensor} enemigos por defensor`, 
+            'warning'
+        );
     }
 
     toggleTowerPanel() {

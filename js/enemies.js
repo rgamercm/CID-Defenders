@@ -74,14 +74,24 @@ class EnemyManager {
 
     spawnWave(waveNumber) {
         const enemies = [];
-        const baseCount = 2 + Math.floor(waveNumber / 2);
-        const enemyCount = Math.min(baseCount, 6);
         
-        console.log(`🎯 Generando oleada ${waveNumber} con ${enemyCount} enemigos`);
+        // NUEVO SISTEMA: 1 enemigo por defensor en oleada 1, 2 en oleada 2, etc.
+        // Máximo 3 enemigos por defensor (oleadas 3-5)
+        const enemiesPerDefensor = Math.min(waveNumber, 3);
+        const totalEnemies = enemiesPerDefensor * 3; // 3 defensores (C, I, D)
         
-        for (let i = 0; i < enemyCount; i++) {
+        console.log(`🎯 Generando oleada ${waveNumber}: ${enemiesPerDefensor} enemigos por defensor (${totalEnemies} total)`);
+        
+        // Nombres de los defensores en orden
+        const defensorNames = ["Confidencialidad", "Integridad", "Disponibilidad"];
+        
+        for (let i = 0; i < totalEnemies; i++) {
+            // Asignar defensor específico a cada enemigo
+            const defensorIndex = i % 3; // 0=C, 1=I, 2=D
+            const assignedDefensor = defensorNames[defensorIndex];
+            
             const enemyType = this.selectRandomEnemyType(waveNumber);
-            const enemy = this.createEnemy(enemyType, waveNumber, i);
+            const enemy = this.createEnemy(enemyType, waveNumber, i, assignedDefensor);
             enemies.push(enemy);
         }
         
@@ -120,7 +130,7 @@ class EnemyManager {
         return items[items.length - 1];
     }
 
-    createEnemy(type, waveNumber, index) {
+    createEnemy(type, waveNumber, index, assignedDefensor = null) {
         const config = this.enemyConfigs[type];
         
         // Aumentar dificultad según oleada
@@ -138,7 +148,8 @@ class EnemyManager {
             radius: config.radius,
             color: config.color,
             score: config.score,
-            description: config.description
+            description: config.description,
+            assignedDefensor: assignedDefensor // NUEVO: Defensor asignado
         });
         
         return enemy;
@@ -151,7 +162,10 @@ class EnemyManager {
             { x: -40, y: 300 },
             { x: -40, y: 150 },
             { x: -40, y: 250 },
-            { x: -40, y: 350 }
+            { x: -40, y: 350 },
+            { x: -40, y: 80 },
+            { x: -40, y: 180 },
+            { x: -40, y: 280 }
         ];
         
         return spawnPoints[index % spawnPoints.length];
@@ -172,6 +186,7 @@ class Enemy {
         this.color = config.color;
         this.score = config.score;
         this.description = config.description;
+        this.assignedDefensor = config.assignedDefensor; // NUEVO: Defensor pre-asignado
         
         // Estado del enemigo
         this.targetDefensor = null;
@@ -185,6 +200,11 @@ class Enemy {
     }
 
     update(deltaTime, defensores) {
+        // Si tiene defensor asignado, usarlo como objetivo
+        if (this.assignedDefensor && !this.targetDefensor) {
+            this.targetDefensor = defensores[this.assignedDefensor];
+        }
+        
         // Buscar defensor objetivo si no tiene
         if (!this.targetDefensor || this.targetDefensor.salud <= 0) {
             this.findTargetDefensor(defensores);
@@ -207,6 +227,18 @@ class Enemy {
     findTargetDefensor(defensores) {
         const defensoresVivos = Object.values(defensores).filter(d => d.salud > 0);
         if (defensoresVivos.length === 0) return;
+        
+        // Si tenía un defensor asignado pero murió, buscar uno similar
+        if (this.assignedDefensor) {
+            const defensorNames = Object.keys(defensores);
+            const similarDefensor = defensorNames.find(name => 
+                defensores[name].salud > 0 && name !== this.assignedDefensor
+            );
+            if (similarDefensor) {
+                this.targetDefensor = defensores[similarDefensor];
+                return;
+            }
+        }
         
         // Comportamientos especiales según tipo
         switch (this.type) {
@@ -327,6 +359,11 @@ class Enemy {
             this.drawAttackIndicator(ctx);
         }
         
+        // NUEVO: Indicador de defensor asignado
+        if (this.assignedDefensor) {
+            this.drawAssignedDefensorIndicator(ctx);
+        }
+        
         ctx.restore();
     }
 
@@ -389,6 +426,31 @@ class Enemy {
         ctx.setLineDash([]);
     }
 
+    drawAssignedDefensorIndicator(ctx) {
+        // NUEVO: Indicador visual del defensor asignado
+        const colors = {
+            'Confidencialidad': '#3498db',
+            'Integridad': '#2ecc71', 
+            'Disponibilidad': '#e74c3c'
+        };
+        
+        const color = colors[this.assignedDefensor] || '#ffffff';
+        
+        // Pequeño círculo de color en la parte superior
+        ctx.fillStyle = color;
+        ctx.beginPath();
+        ctx.arc(this.x, this.y - this.radius - 5, 3, 0, Math.PI * 2);
+        ctx.fill();
+        
+        // Letra inicial del defensor
+        ctx.fillStyle = '#ffffff';
+        ctx.font = '8px Arial';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        const initial = this.assignedDefensor.charAt(0);
+        ctx.fillText(initial, this.x, this.y - this.radius - 5);
+    }
+
     getInfo() {
         return {
             name: this.name,
@@ -398,7 +460,8 @@ class Enemy {
             damage: this.damage,
             speed: this.speed,
             description: this.description,
-            score: this.score
+            score: this.score,
+            assignedDefensor: this.assignedDefensor // NUEVO: Incluir en info
         };
     }
 }

@@ -42,12 +42,14 @@ class CIDDefenderGame {
             canvasWidth: 800,
             canvasHeight: 500,
             startingScore: 200,
-            waveInterval: 10000
+            waveInterval: 15000, // Aumentado a 15 segundos para mejor jugabilidad
+            maxWaves: 5 // NUEVO: Límite de 5 oleadas
         };
 
-        // Sistema de mensajes en pantalla
+        // Sistema de mensajes en pantalla - MEJORADO
         this.screenMessages = [];
         this.messageDuration = 3.0; // 3 segundos
+        this.messageIdCounter = 0; // Para identificar mensajes únicos
 
         // Contadores de respuestas
         this.stats = {
@@ -119,9 +121,11 @@ class CIDDefenderGame {
         return {
             spawnWave: (waveNumber) => {
                 const enemies = [];
-                const count = Math.min(3 + waveNumber, 8);
+                // NUEVO: Sistema de oleadas mejorado
+                const enemiesPerDefensor = Math.min(waveNumber, 3);
+                const totalEnemies = enemiesPerDefensor * 3;
                 
-                for (let i = 0; i < count; i++) {
+                for (let i = 0; i < totalEnemies; i++) {
                     const tipos = ['virus', 'trojan', 'ddos', 'phishing', 'ransomware'];
                     const tipo = tipos[Math.floor(Math.random() * tipos.length)];
                     
@@ -315,20 +319,44 @@ class CIDDefenderGame {
         };
     }
 
-    showScreenMessage(text, type = 'info') {
+    showScreenMessage(text, type = 'info', position = 'center') {
+        const messageId = this.messageIdCounter++;
+        
+        // NUEVO: Posiciones diferentes para diferentes tipos de mensajes
+        let baseY;
+        switch(position) {
+            case 'top':
+                baseY = 80; // Para mensajes de oleadas
+                break;
+            case 'bottom':
+                baseY = 400; // Para mensajes de daño/puntos
+                break;
+            case 'center':
+            default:
+                baseY = 200; // Para mensajes principales (respuestas)
+                break;
+        }
+        
         const message = {
+            id: messageId,
             text: text,
             type: type, // 'success', 'error', 'info', 'warning'
+            position: position, // 'top', 'center', 'bottom'
             duration: this.messageDuration,
             timer: 0,
             x: this.config.canvasWidth / 2,
-            y: 150,
+            y: baseY,
             alpha: 1.0,
-            scale: 1.0
+            scale: 1.0,
+            offset: 0 // Para separar mensajes del mismo tipo
         };
         
+        // Calcular offset para mensajes del mismo tipo en la misma posición
+        const samePositionMessages = this.screenMessages.filter(m => m.position === position);
+        message.offset = samePositionMessages.length * 30; // Separación de 30px
+        
         this.screenMessages.push(message);
-        console.log(`📢 Mensaje en pantalla: ${text} (${type})`);
+        console.log(`📢 Mensaje en pantalla: ${text} (${type}) en posición ${position}`);
     }
 
     updateScreenMessages(deltaTime) {
@@ -348,15 +376,35 @@ class CIDDefenderGame {
             
             message.alpha = 1.0 - (message.timer / message.duration);
             
-            // Efecto de flotación suave
-            message.y = 150 + Math.sin(message.timer * 5) * 5;
+            // Efecto de flotación suave - solo para mensajes centrales
+            if (message.position === 'center') {
+                message.y = 200 + Math.sin(message.timer * 5) * 5 + message.offset;
+            } else {
+                message.y = this.getBaseY(message.position) + message.offset;
+            }
             
             return message.timer < message.duration;
         });
     }
 
+    // NUEVO: Función para obtener posición base según tipo
+    getBaseY(position) {
+        switch(position) {
+            case 'top': return 80;
+            case 'bottom': return 400;
+            case 'center': 
+            default: return 200;
+        }
+    }
+
     drawScreenMessages() {
-        this.screenMessages.forEach(message => {
+        // Ordenar mensajes por posición para dibujar correctamente
+        const sortedMessages = [...this.screenMessages].sort((a, b) => {
+            const positionOrder = { 'top': 0, 'center': 1, 'bottom': 2 };
+            return positionOrder[a.position] - positionOrder[b.position];
+        });
+        
+        sortedMessages.forEach(message => {
             this.ctx.save();
             
             // Aplicar transformaciones para animación
@@ -644,7 +692,8 @@ class CIDDefenderGame {
     updateTimers(deltaTime) {
         this.waveTimer += deltaTime;
         
-        if (this.waveTimer >= this.config.waveInterval / 1000) {
+        // NUEVO: Solo generar oleadas si no hemos alcanzado el máximo
+        if (this.currentWave < this.config.maxWaves && this.waveTimer >= this.config.waveInterval / 1000) {
             this.spawnWave();
             this.waveTimer = 0;
         }
@@ -841,12 +890,24 @@ class CIDDefenderGame {
 
     // === SISTEMA DE ATAQUES Y PREGUNTAS ===
 
+    // NUEVO: Sistema de oleadas mejorado
     spawnWave() {
         this.currentWave++;
-        console.log(`🌊 Oleada ${this.currentWave}`);
+        
+        // Verificar límite de oleadas
+        if (this.currentWave > this.config.maxWaves) {
+            console.log('🎉 Máximo de oleadas alcanzado');
+            return;
+        }
+        
+        console.log(`🌊 Oleada ${this.currentWave}: ${Math.min(this.currentWave, 3)} enemigos por defensor`);
         
         const newEnemies = this.enemyManager.spawnWave(this.currentWave);
         this.enemies.push(...newEnemies);
+        
+        // Mensaje informativo - POSICIÓN SUPERIOR
+        const enemiesPerDefensor = Math.min(this.currentWave, 3);
+        this.showScreenMessage(`¡Oleada ${this.currentWave}! ${enemiesPerDefensor} enemigos por defensor`, 'warning', 'top');
     }
 
     showQuestionScreen() {
@@ -931,7 +992,7 @@ class CIDDefenderGame {
 
     onCorrectAnswer() {
         console.log('✅ Respuesta correcta!');
-        this.showScreenMessage('¡RESPUESTA CORRECTA!', 'success');
+        this.showScreenMessage('¡RESPUESTA CORRECTA!', 'success', 'center');
         
         if (this.ataqueActual) {
             // El enemigo recibe daño
@@ -940,34 +1001,34 @@ class CIDDefenderGame {
             if (this.ataqueActual.enemy.health <= 0) {
                 this.score += this.ataqueActual.enemy.score;
                 this.createCelebrationEffect();
-                this.showScreenMessage(`+${this.ataqueActual.enemy.score} puntos`, 'success');
+                this.showScreenMessage(`+${this.ataqueActual.enemy.score} puntos`, 'success', 'bottom');
             } else {
-                this.showScreenMessage('¡Enemigo dañado!', 'success');
+                this.showScreenMessage('¡Enemigo dañado!', 'success', 'bottom');
             }
         }
         
         this.score += 50;
-        this.showScreenMessage('+50 puntos', 'success');
+        this.showScreenMessage('+50 puntos', 'success', 'bottom');
     }
 
     onWrongAnswer() {
         console.log('❌ Respuesta incorrecta');
-        this.showScreenMessage('RESPUESTA INCORRECTA', 'error');
+        this.showScreenMessage('RESPUESTA INCORRECTA', 'error', 'center');
         
         if (this.ataqueActual) {
             // El defensor recibe daño
             this.ataqueActual.defensor.salud -= this.ataqueActual.damage;
             this.createDamageEffect(this.ataqueActual.defensor.posicion.x, this.ataqueActual.defensor.posicion.y);
             
-            this.showScreenMessage(`-${this.ataqueActual.damage} salud`, 'error');
+            this.showScreenMessage(`-${this.ataqueActual.damage} salud`, 'error', 'bottom');
             
             // Verificar si el defensor fue eliminado
             if (this.ataqueActual.defensor.salud <= 0) {
-                this.showScreenMessage(`${this.ataqueActual.defensor.nombre} ha sido comprometido!`, 'error');
+                this.showScreenMessage(`${this.ataqueActual.defensor.nombre} ha sido comprometido!`, 'error', 'top');
             }
         }
         
-        this.showScreenMessage('¡Enemigo ataca!', 'warning');
+        this.showScreenMessage('¡Enemigo ataca!', 'warning', 'bottom');
     }
 
     showFinalStats() {
@@ -980,6 +1041,7 @@ class CIDDefenderGame {
                     <p>✅ Correctas: ${this.stats.correctAnswers}</p>
                     <p>❌ Incorrectas: ${this.stats.wrongAnswers}</p>
                     <p>🎯 Precisión: ${this.stats.accuracy}%</p>
+                    <p>🌊 Oleada alcanzada: ${this.currentWave}</p>
                 </div>
             `;
         }
@@ -1398,7 +1460,7 @@ class CIDDefenderGame {
         this.ctx.textAlign = 'left';
         
         this.ctx.fillText(`Puntos: ${this.score}`, 10, 20);
-        this.ctx.fillText(`Oleada: ${this.currentWave}`, 10, 40);
+        this.ctx.fillText(`Oleada: ${this.currentWave}/${this.config.maxWaves}`, 10, 40); // NUEVO: Mostrar máximo
         this.ctx.fillText(`Enemigos: ${this.enemies.length}`, 10, 60);
         
         // Defensores vivos
@@ -1416,8 +1478,8 @@ class CIDDefenderGame {
             return;
         }
         
-        // Victoria después de 10 oleadas
-        if (this.currentWave >= 10) {
+        // NUEVO: Victoria después de 5 oleadas y sin enemigos
+        if (this.currentWave >= this.config.maxWaves && this.enemies.length === 0) {
             this.setGameState(GAME_STATES.VICTORY);
             return;
         }

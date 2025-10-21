@@ -489,10 +489,11 @@ class QuestionManager {
     }
 
     /**
-     * GESTIÓN DE PREGUNTAS ESPECÍFICAS POR DEFENSOR
+     * GESTIÓN DE PREGUNTAS ESPECÍFICAS POR DEFENSOR - MEJORADA
+     * NUEVO SISTEMA DE PRIORIZACIÓN: Preguntas no utilizadas primero
      */
     getQuestionForDefensor(defensorName) {
-        // Filtrar preguntas específicas para el defensor atacado
+        // PRIORIDAD 1: Preguntas específicas del defensor NO utilizadas
         const defensorQuestions = this.questions.filter(q => 
             q.category === defensorName && !this.usedQuestions.has(q.id)
         );
@@ -504,30 +505,45 @@ class QuestionManager {
             return question;
         }
 
-        // Si no hay preguntas específicas disponibles, usar cualquier pregunta no usada
-        console.log(`ℹ️  No hay preguntas específicas para ${defensorName}, usando pregunta general`);
-        return this.getRandomQuestion();
+        // PRIORIDAD 2: Cualquier pregunta NO utilizada
+        const availableQuestions = this.questions.filter(q => !this.usedQuestions.has(q.id));
+        if (availableQuestions.length > 0) {
+            const question = utils.randomFromArray(availableQuestions);
+            this.usedQuestions.add(question.id);
+            console.log(`ℹ️  Usando pregunta general disponible para ${defensorName}`);
+            return question;
+        }
+
+        // PRIORIDAD 3: ÚLTIMO RECURSO - Reiniciar conjunto y usar cualquier pregunta
+        console.log(`⚠️  Todas las preguntas usadas para ${defensorName}, reiniciando conjunto...`);
+        this.usedQuestions.clear();
+        const freshQuestion = utils.randomFromArray(this.questions);
+        this.usedQuestions.add(freshQuestion.id);
+        return freshQuestion;
     }
 
+    /**
+     * OBTENER PREGUNTA ALEATORIA - MEJORADA
+     * Prioriza preguntas no utilizadas, solo reinicia como último recurso
+     */
     getRandomQuestion() {
-        // Filtrar preguntas no utilizadas
+        // PRIORIDAD 1: Preguntas no utilizadas
         const availableQuestions = this.questions.filter(q => !this.usedQuestions.has(q.id));
         
-        if (availableQuestions.length === 0) {
-            // Si no hay preguntas disponibles, reiniciar el conjunto
-            utils.log("Todas las preguntas usadas, reiniciando conjunto...");
-            this.usedQuestions.clear();
-            return this.getRandomQuestion();
+        if (availableQuestions.length > 0) {
+            const randomQuestion = utils.randomFromArray(availableQuestions);
+            this.usedQuestions.add(randomQuestion.id);
+            utils.log(`Pregunta seleccionada (no utilizada): ${randomQuestion.question.substring(0, 50)}...`);
+            return randomQuestion;
         }
         
-        // Seleccionar pregunta aleatoria
-        const randomQuestion = utils.randomFromArray(availableQuestions);
-        
-        // Marcar como usada
-        this.usedQuestions.add(randomQuestion.id);
-        
-        utils.log(`Pregunta seleccionada: ${randomQuestion.question.substring(0, 50)}...`);
-        return randomQuestion;
+        // PRIORIDAD 2: Solo si no hay disponibles, reiniciar y usar cualquier pregunta
+        utils.log("🔄 Todas las preguntas usadas, reiniciando conjunto...");
+        this.usedQuestions.clear();
+        const freshQuestion = utils.randomFromArray(this.questions);
+        this.usedQuestions.add(freshQuestion.id);
+        utils.log(`Pregunta seleccionada (reinicio): ${freshQuestion.question.substring(0, 50)}...`);
+        return freshQuestion;
     }
 
     getQuestionsByCategory(category) {
