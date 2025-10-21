@@ -120,11 +120,28 @@ body {
     border-radius: 20px;
     cursor: pointer;
     transition: all 0.3s ease;
+    font-size: 0.9rem;
 }
 
 .skip-btn:hover {
     background: rgba(255, 255, 255, 0.3);
     transform: scale(1.05);
+}
+
+button:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+    transform: none !important;
+}
+
+button:disabled:hover {
+    transform: none !important;
+    box-shadow: none !important;
+}
+
+button:focus {
+    outline: 2px solid #60a5fa;
+    outline-offset: 2px;
 }
 
 /* ===== PANTALLA DE MENÚ ===== */
@@ -163,12 +180,19 @@ body {
     cursor: pointer;
     transition: all 0.3s ease;
     box-shadow: 0 4px 15px rgba(59, 130, 246, 0.3);
+    min-width: 200px;
+    margin: 0.5rem 0;
 }
 
 .menu-btn:hover {
     transform: translateY(-3px);
     box-shadow: 0 6px 20px rgba(59, 130, 246, 0.5);
     background: linear-gradient(135deg, #6366f1, #8b5cf6);
+}
+
+
+.menu-btn:active {
+    transform: translateY(-1px);
 }
 
 .cid-text {
@@ -231,19 +255,26 @@ body {
 
 .control-btn {
     padding: 0.5rem 1rem;
-    background: rgba(59, 130, 246, 0.8);
+    background: rgba(59, 130, 246, 0.9);
     border: none;
     border-radius: 20px;
     color: white;
     cursor: pointer;
     font-size: 0.9rem;
     transition: all 0.3s ease;
+    margin: 0 0.2rem;
 }
+
 
 .control-btn:hover {
     background: rgba(37, 99, 235, 0.9);
     transform: scale(1.05);
 }
+
+.control-btn:active {
+    transform: scale(0.95);
+}
+
 
 /* ===== INDICADORES CID ===== */
 .cid-indicators {
@@ -329,11 +360,14 @@ body {
     color: white;
     cursor: pointer;
     transition: all 0.3s ease;
+    min-width: 200px;
+    margin: 0.5rem 0;
 }
 
 .pause-btn:hover {
     background: linear-gradient(135deg, #6366f1, #8b5cf6);
     transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(59, 130, 246, 0.4);
 }
 
 /* ===== PANTALLA DE PREGUNTAS ===== */
@@ -363,6 +397,11 @@ body {
     background: #3b82f6;
     border-color: #60a5fa;
     transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(59, 130, 246, 0.3);
+}
+
+.option:active {
+    transform: translateY(0);
 }
 
 .question-timer {
@@ -410,28 +449,39 @@ body {
     color: white;
     cursor: pointer;
     transition: all 0.3s ease;
+    min-width: 180px;
+    margin: 0 0.5rem;
 }
 
 .end-btn:hover {
     transform: translateY(-2px);
     box-shadow: 0 5px 15px rgba(59, 130, 246, 0.4);
+    background: linear-gradient(135deg, #6366f1, #8b5cf6);
 }
 
 /* ===== PANTALLA DE INSTRUCCIONES ===== */
 .instructions-content {
-    max-width: 700px;
-    max-height: 80vh;
+    max-width: 800px;
+    max-height: 85vh;
     overflow-y: auto;
+    background: linear-gradient(135deg, #1e293b, #374151);
+    padding: 2.5rem;
+    border-radius: 20px;
+    border: 2px solid #475569;
+    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5);
 }
 
 .instructions-text {
     text-align: left;
-    margin: 2rem 0;
+    margin: 1.5rem 0;
 }
 
 .instructions-text h3 {
     color: #60a5fa;
-    margin: 1.5rem 0 0.5rem 0;
+    margin: 1.5rem 0 0.8rem 0;
+    font-size: 1.3rem;
+    border-bottom: 2px solid #334155;
+    padding-bottom: 0.5rem;
 }
 
 .instructions-text ul {
@@ -440,9 +490,34 @@ body {
 }
 
 .instructions-text li {
-    margin: 0.5rem 0;
+    margin: 0.8rem 0;
     padding-left: 0.5rem;
+    line-height: 1.5;
 }
+
+.instructions-text strong {
+    color: #fbbf24;
+}
+
+/* Scrollbar personalizado para instrucciones */
+.instructions-content::-webkit-scrollbar {
+    width: 8px;
+}
+
+.instructions-content::-webkit-scrollbar-track {
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 4px;
+}
+
+.instructions-content::-webkit-scrollbar-thumb {
+    background: #3b82f6;
+    border-radius: 4px;
+}
+
+.instructions-content::-webkit-scrollbar-thumb:hover {
+    background: #2563eb;
+}
+
 
 /* ===== RESPONSIVE DESIGN ===== */
 @media (max-width: 768px) {
@@ -469,7 +544,45 @@ body {
         gap: 0.5rem;
         text-align: center;
     }
+
+        .menu-btn {
+        padding: 0.8rem 1.5rem;
+        font-size: 1rem;
+        min-width: 160px;
+    }
+    
+    .pause-btn {
+        padding: 0.8rem 1.5rem;
+        font-size: 1rem;
+        min-width: 160px;
+    }
+    
+    .end-btn {
+        padding: 0.8rem 1.5rem;
+        min-width: 140px;
+        margin: 0.3rem;
+    }
+    
+    .control-btn {
+        padding: 0.4rem 0.8rem;
+        font-size: 0.8rem;
+    }
+    
+    .instructions-content {
+        padding: 1.5rem;
+        margin: 1rem;
+    }
+    
+    .end-buttons {
+        flex-direction: column;
+        gap: 0.5rem;
+    }
+    
+    .pause-options {
+        gap: 0.5rem;
+    }
 }
+
 
 /* ===== ANIMACIONES ADICIONALES ===== */
 @keyframes pulse {
@@ -859,6 +972,10 @@ body {
     font-size: 1.1rem;
 }
 
+.button-pulse {
+    animation: buttonPulse 2s infinite;
+}
+
 .stats-panel p {
     margin: 0.5rem 0;
     font-size: 0.9rem;
@@ -920,4 +1037,10 @@ body {
     .stats-panel p {
         font-size: 0.8rem;
     }
+}
+
+@keyframes buttonPulse {
+    0% { transform: scale(1); }
+    50% { transform: scale(1.05); }
+    100% { transform: scale(1); }
 }

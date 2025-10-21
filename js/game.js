@@ -349,13 +349,29 @@ class CIDDefenderGame {
     }
 
     setupEventListeners() {
-        // Botones básicos
+        // Botones básicos del juego
         this.setupButton('startGame', () => this.startGame());
         this.setupButton('pauseGame', () => this.pauseGame());
         this.setupButton('resumeGame', () => this.resumeGame());
         this.setupButton('restartGame', () => this.restartGame());
         this.setupButton('exitToMenu', () => this.exitToMenu());
         this.setupButton('skipIntro', () => this.skipIntro());
+        
+        // Botones del menú principal - CORREGIDO
+        this.setupButton('showInstructions', () => this.showInstructions());
+        this.setupButton('exitGame', () => this.exitGame());
+        this.setupButton('backToMenu', () => this.backToMenuFromInstructions()); // ← CORREGIDO
+        
+        // Botones de pausa
+        this.setupButton('quitToMenu', () => this.quitToMenu());
+        
+        // Botones de game over
+        this.setupButton('restartFromGameOver', () => this.restartFromGameOver());
+        this.setupButton('menuFromGameOver', () => this.menuFromGameOver());
+        
+        // Botones de victoria
+        this.setupButton('restartFromVictory', () => this.restartFromVictory());
+        this.setupButton('menuFromVictory', () => this.menuFromVictory());
         
         // Eventos de teclado para torres
         document.addEventListener('keydown', (e) => {
@@ -367,13 +383,16 @@ class CIDDefenderGame {
                 case '3': this.selectTower('ids'); break;
                 case '4': this.selectTower('antivirus'); break;
                 case 'Escape': this.towerManager.selectedTowerType = null; break;
+                case 'p': case 'P': this.pauseGame(); break;
             }
         });
         
         // Click en canvas para construir
         this.canvas.addEventListener('click', (e) => this.handleCanvasClick(e));
+        
+        console.log('✅ Todos los event listeners configurados correctamente');
     }
-
+    
     setupButton(id, handler) {
         const element = document.getElementById(id);
         if (element) element.addEventListener('click', handler);
@@ -385,6 +404,13 @@ class CIDDefenderGame {
         this.resetGame();
         this.setGameState(GAME_STATES.PLAYING);
         setTimeout(() => this.spawnWave(), 1000);
+    }
+
+    backToMenuFromInstructions() {
+        console.log('🏠 Volviendo al menú desde instrucciones');
+        this.showScreen('menuScreen');
+        // Asegurarnos de que el estado del juego también se actualice
+        this.currentState = GAME_STATES.MENU;
     }
 
     resetGame() {
@@ -435,6 +461,7 @@ class CIDDefenderGame {
                 this.startGameLoop();
                 break;
             case GAME_STATES.PAUSED:
+                this.updatePauseStats();
                 this.showScreen('pauseScreen');
                 this.stopGameLoop();
                 break;
@@ -442,11 +469,13 @@ class CIDDefenderGame {
                 this.showQuestionScreen();
                 break;
             case GAME_STATES.GAME_OVER:
+                this.updateFinalStats();
                 this.showScreen('gameOverScreen');
                 this.stopGameLoop();
                 this.showFinalStats();
                 break;
             case GAME_STATES.VICTORY:
+                this.updateFinalStats();
                 this.showScreen('victoryScreen');
                 this.stopGameLoop();
                 this.showFinalStats();
@@ -1054,6 +1083,125 @@ class CIDDefenderGame {
         });
     }
 
+        updatePauseStats() {
+        // Actualizar estadísticas en pantalla de pausa
+        const pauseCorrect = document.getElementById('pauseCorrect');
+        const pauseWrong = document.getElementById('pauseWrong');
+        const pauseAccuracy = document.getElementById('pauseAccuracy');
+        
+        if (pauseCorrect) pauseCorrect.textContent = this.stats.correctAnswers;
+        if (pauseWrong) pauseWrong.textContent = this.stats.wrongAnswers;
+        if (pauseAccuracy) pauseAccuracy.textContent = `${this.stats.accuracy}%`;
+    }
+    
+    updateFinalStats() {
+        // Actualizar puntuación final
+        const finalScore = document.getElementById('finalScore');
+        const victoryScore = document.getElementById('victoryScore');
+        
+        if (finalScore) finalScore.textContent = this.score;
+        if (victoryScore) victoryScore.textContent = this.score;
+    }
+
+    exitGame() {
+        console.log('🚪 Saliendo del juego');
+        this.showExitConfirmation();
+    }
+    
+    showExitConfirmation() {
+        const modal = document.createElement('div');
+        modal.style.cssText = `
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.8);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 3000;
+        `;
+        
+        modal.innerHTML = `
+            <div style="
+                background: #1e293b;
+                padding: 2rem;
+                border-radius: 15px;
+                border: 2px solid #475569;
+                text-align: center;
+                max-width: 400px;
+                width: 90%;
+            ">
+                <h3 style="color: #60a5fa; margin-bottom: 1rem;">¿Salir del Juego?</h3>
+                <p style="color: #d1d5db; margin-bottom: 2rem;">¿Estás seguro de que quieres salir de CID Defender?</p>
+                <div style="display: flex; gap: 1rem; justify-content: center;">
+                    <button id="confirmExit" style="
+                        padding: 0.8rem 1.5rem;
+                        background: #ef4444;
+                        color: white;
+                        border: none;
+                        border-radius: 8px;
+                        cursor: pointer;
+                    ">Sí, Salir</button>
+                    <button id="cancelExit" style="
+                        padding: 0.8rem 1.5rem;
+                        background: #3b82f6;
+                        color: white;
+                        border: none;
+                        border-radius: 8px;
+                        cursor: pointer;
+                    ">Cancelar</button>
+                </div>
+            </div>
+        `;
+        
+        document.body.appendChild(modal);
+        
+        document.getElementById('confirmExit').addEventListener('click', () => {
+            document.body.removeChild(modal);
+            alert('¡Gracias por jugar CID Defender! Vuelve pronto.');
+            // En un entorno de navegador, no podemos cerrar la ventana automáticamente
+            // por razones de seguridad, pero podemos redirigir o simplemente mostrar el mensaje
+        });
+        
+        document.getElementById('cancelExit').addEventListener('click', () => {
+            document.body.removeChild(modal);
+        });
+    }
+    
+    backToMenu() {
+        console.log('🏠 Volviendo al menú principal');
+        this.setGameState(GAME_STATES.MENU);
+    }
+    
+    quitToMenu() {
+        console.log('🚪 Saliendo al menú principal');
+        if (this.currentState === GAME_STATES.PAUSED) {
+            this.setGameState(GAME_STATES.MENU);
+        }
+    }
+    
+    restartFromGameOver() {
+        console.log('🔄 Reiniciando desde Game Over');
+        this.startGame();
+    }
+    
+    menuFromGameOver() {
+        console.log('🏠 Menú desde Game Over');
+        this.setGameState(GAME_STATES.MENU);
+    }
+    
+    restartFromVictory() {
+        console.log('🔄 Reiniciando desde Victoria');
+        this.startGame();
+    }
+    
+    menuFromVictory() {
+        console.log('🏠 Menú desde Victoria');
+        this.setGameState(GAME_STATES.MENU);
+    }
+
     drawTowers() {
         this.towers.forEach(tower => {
             // Base de la torre
@@ -1176,6 +1324,52 @@ class CIDDefenderGame {
     }
 
     exitToMenu() {
+        this.setGameState(GAME_STATES.MENU);
+    }
+
+    showInstructions() {
+        console.log('📖 Mostrando instrucciones');
+        this.setGameState(GAME_STATES.MENU); // Temporal - necesitamos crear estado INSTRUCTIONS
+        this.showScreen('instructionsScreen');
+    }
+    
+    exitGame() {
+        console.log('🚪 Saliendo del juego');
+        if (confirm('¿Estás seguro de que quieres salir del juego?')) {
+            // En un entorno web, podríamos cerrar la ventana o redirigir
+            window.close(); // Esto puede no funcionar en todos los navegadores
+            // Alternativa: mostrar mensaje
+            alert('¡Gracias por jugar CID Defender!');
+        }
+    }
+    
+    backToMenu() {
+        console.log('🏠 Volviendo al menú principal');
+        this.setGameState(GAME_STATES.MENU);
+    }
+    
+    quitToMenu() {
+        console.log('🚪 Saliendo al menú principal');
+        this.setGameState(GAME_STATES.MENU);
+    }
+    
+    restartFromGameOver() {
+        console.log('🔄 Reiniciando desde Game Over');
+        this.startGame();
+    }
+    
+    menuFromGameOver() {
+        console.log('🏠 Menú desde Game Over');
+        this.setGameState(GAME_STATES.MENU);
+    }
+    
+    restartFromVictory() {
+        console.log('🔄 Reiniciando desde Victoria');
+        this.startGame();
+    }
+    
+    menuFromVictory() {
+        console.log('🏠 Menú desde Victoria');
         this.setGameState(GAME_STATES.MENU);
     }
 }
